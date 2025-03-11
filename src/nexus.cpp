@@ -72,7 +72,7 @@ nexus::nexus(HsaApiTable* table,
     LOG_ERROR("No GPU Agent Found");
     std::terminate();
   }
-  const std::string fname;
+  const std::string fname{""};
   kdb_ = std::make_unique<kernelDB::kernelDB>(gpu_agent.agent, fname);
 
   std::vector<std::string> kernels;
