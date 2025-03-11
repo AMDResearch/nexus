@@ -24,6 +24,7 @@ CPMAddPackage(
     GIT_TAG muhaawad/fix-cmake-target
 )
 
+CPMAddPackage("gh:nlohmann/json@3.11.3")
 
 find_package(HSA REQUIRED)
 
@@ -57,6 +58,7 @@ nexus_compiler_options(nexus)
 target_link_libraries(nexus
     PUBLIC
         spdlog::spdlog
+        nlohmann_json::nlohmann_json
         kernelDB64
         fmt::fmt
         hsa::hsa

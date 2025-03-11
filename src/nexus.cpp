@@ -22,6 +22,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <nlohmann/json.hpp>
 
 #include <hip/hip_runtime.h>
 
@@ -30,6 +31,26 @@ namespace maestro {
 std::mutex nexus::mutex_{};
 std::shared_mutex nexus::stop_mutex_{};
 nexus* nexus::singleton_{nullptr};
+
+static std::string read_line_from_file(const std::string& filename, size_t line_number) {
+  std::ifstream file(filename);
+  if (!file) {
+      LOG_ERROR("Cannot open file {}", filename);
+      return "";
+  }
+
+  std::string line;
+  size_t current_line = 0;
+
+  while (std::getline(file, line)) {
+      if (current_line == line_number) {
+          return line;
+      }
+      current_line++;
+  }
+  LOG_ERROR("Error: Line number {} not found in file {}", line_number, filename);
+  return "";
+}
 
 nexus::nexus(HsaApiTable* table,
                uint64_t runtime_version,
@@ -86,12 +107,11 @@ nexus::nexus(HsaApiTable* table,
     const auto kernel_filename = kdb_->getFileName(kernel, kernel_idx);
     LOG_INFO("Kernel: {}", kernel);
     LOG_INFO("Number of lines: {}", lines.size());
-    LOG_INFO("Filename: {}", kernel_filename);
     for (auto& line : lines) {
       try {
         const auto& inst = kdb_->getInstructionsForLine(kernel, line);
         for (size_t idx = 0; idx < inst.size(); idx++) {
-          LOG_INFO("{}:{} -> {}", kernel_filename, line, inst[idx].disassembly_);
+          LOG_INFO("{}:{} -> {}", inst[idx].file_name_, line, inst[idx].disassembly_);
         }
       } catch (std::runtime_error e) {
         LOG_ERROR("Error: {}", e.what());
@@ -227,7 +247,14 @@ std::string nexus::get_kernel_name(const std::uint64_t kernel_object) {
   if (handle_find_result == handles_symbols_.end()) {
     return "Symbol not found.";
   }
-  return demangle_name(symbol_find_result->second.c_str());
+  auto demangled_name = demangle_name(symbol_find_result->second.c_str());
+
+  size_t clone_suffix_pos = demangled_name.find(" [clone");
+  if (clone_suffix_pos != std::string::npos) {
+    demangled_name = demangled_name.substr(0, clone_suffix_pos);
+  }
+
+  return demangled_name;
 }
 
 std::string nexus::packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet) {
@@ -318,7 +345,7 @@ std::string nexus::packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet) {
   return buff.str();
 }
 
-std::optional<void*> nexus::is_traceable_packet(
+std::optional<std::string> nexus::is_traceable_packet(
     const hsa_ext_amd_aql_pm4_packet_t* packet) {
   uint32_t type = get_header_type(packet);
   switch (type) {
@@ -331,7 +358,7 @@ std::optional<void*> nexus::is_traceable_packet(
 
       if (kernel_to_trace != nullptr && kernel_name.contains(kernel_to_trace)) {
         LOG_INFO("Found the target kernel {}", kernel_name);
-        return disp->kernarg_address;
+        return kernel_name;
       }
     }
   }
@@ -486,9 +513,59 @@ void nexus::write_packets(hsa_queue_t* queue,
     }
     hsa_core_call(instance, hsa_signal_destroy, new_signal);
 
-    auto args = is_traceable_packet(packet);
-    if (args.has_value()) {
-      send_message_and_wait(args.value());
+    auto kernel_string = is_traceable_packet(packet);
+    if (kernel_string.has_value()) {
+
+      const char* env_trace_path = std::getenv("TRACE_OUTPUT_PATH");
+      std::filesystem::path trace_path(env_trace_path);
+      if (env_trace_path) {
+        try {
+            std::filesystem::create_directories(trace_path);
+        } catch (const std::filesystem::filesystem_error& e) {
+            LOG_ERROR("Failed to create output directory {} with error {}", trace_path.c_str(), e.what());
+        }
+      } else {
+          LOG_ERROR("Storing output to working directory. Set TRACE_OUTPUT_PATH to control where to store the output");
+      }
+
+
+      std::vector<uint32_t> lines;
+      nlohmann::json json;
+      kdb_->getKernelLines(kernel_string.value(), lines);
+      std::size_t cur_offset{0};
+      for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++){
+        const auto& line = lines[line_idx];
+        const auto& inst = kdb_->getInstructionsForLine(kernel_string.value(), line);
+
+        for (size_t idx = 0; idx < inst.size(); idx++) {
+          auto instruction = inst[idx].disassembly_;
+          const auto filename = inst[idx].file_name_;
+          instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'), instruction.end());
+          json[std::to_string(cur_offset)] = {
+            {"file", filename},
+            {"line", line - 1},
+            {"hip", read_line_from_file(filename, line - 1)},
+            {"assembly", instruction},
+            {"hip", instruction},
+          };
+          cur_offset++;
+          LOG_INFO("{}:{} -> {}", inst[idx].file_name_, line, inst[idx].disassembly_);
+        }
+      }
+
+      json["signature"] = kernel_string.value();
+
+      std::string filename = kernel_string.value();
+      std::replace(filename.begin(), filename.end(), ' ', '_');
+      std::filesystem::path json_path = trace_path / (filename + ".json");
+
+      std::ofstream file(json_path);
+      if (file) {
+          file << json.dump(4);
+      } else {
+        LOG_DETAIL("Dumpted the kernel at: {}", json_path.c_str());
+      }
+      LOG_DETAIL("Actual kernel string: {}", kernel_string.value());
     }
   } catch (const std::exception& e) {
     LOG_ERROR("Write object threw ", e.what());

@@ -212,7 +212,7 @@ class nexus {
 
   hsa_status_t add_queue(hsa_queue_t* queue, hsa_agent_t agent);
   std::string packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet);
-  std::optional<void*> is_traceable_packet(const hsa_ext_amd_aql_pm4_packet_t* packet);
+  std::optional<std::string> is_traceable_packet(const hsa_ext_amd_aql_pm4_packet_t* packet);
   void send_message_and_wait(void* args);
   static hsa_status_t hsa_queue_create(hsa_agent_t agent,
                                        uint32_t size,
