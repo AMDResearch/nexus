@@ -1,0 +1,20 @@
+build/
+*.log
+*.bc
+*.hipi
+*.o
+*.s
+*.bc
+*.out
+*.txt
+*.hipfb
+
+# Python
+*/__pycache__/
+
+# Binaries
+vector_add
+vector_add_template
+
+# Editors
+.vscode
