@@ -250,7 +250,7 @@ std::string nexus::packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet) {
       const auto kernel_name = get_kernel_name(disp->kernel_object);
       static const char* kernel_to_trace = std::getenv("KERNEL_TO_TRACE");
 
-      if (kernel_name.starts_with(kernel_to_trace)) {
+      if (kernel_to_trace != nullptr && kernel_name.starts_with(kernel_to_trace)) {
         buff << ("\nTracing the kernel\n");
       }
 
@@ -329,7 +329,7 @@ std::optional<void*> nexus::is_traceable_packet(
       const auto kernel_name = get_kernel_name(disp->kernel_object);
       static const char* kernel_to_trace = std::getenv("KERNEL_TO_TRACE");
 
-      if (kernel_name.contains(kernel_to_trace)) {
+      if (kernel_to_trace != nullptr && kernel_name.contains(kernel_to_trace)) {
         LOG_INFO("Found the target kernel {}", kernel_name);
         return disp->kernarg_address;
       }
@@ -533,7 +533,7 @@ hsa_status_t nexus::hsa_queue_create(hsa_agent_t agent,
                                       uint32_t private_segment_size,
                                       uint32_t group_segment_size,
                                       hsa_queue_t** queue) {
-  LOG_DETAIL("Creating maestro-rt queue");
+  LOG_DETAIL("Creating nexus queue");
 
   hsa_status_t result = HSA_STATUS_SUCCESS;
   auto instance = get_instance();
@@ -561,7 +561,7 @@ hsa_status_t nexus::hsa_queue_create(hsa_agent_t agent,
   return result;
 }
 hsa_status_t nexus::hsa_queue_destroy(hsa_queue_t* queue) {
-  LOG_DETAIL("Destroying maestro-rt queue");
+  LOG_DETAIL("Destroying nexus queue");
   return hsa_core_call(singleton_, hsa_queue_destroy, queue);
 }
 }  // namespace maestro
@@ -572,12 +572,12 @@ PUBLIC_API bool OnLoad(HsaApiTable* table,
                        uint64_t runtime_version,
                        uint64_t failed_tool_count,
                        const char* const* failed_tool_names) {
-  LOG_DETAIL("Creating maestro-rt singleton");
+  LOG_DETAIL("Creating maestro singleton");
 
   maestro::nexus* hook = maestro::nexus::get_instance(
       table, runtime_version, failed_tool_count, failed_tool_names);
 
-  LOG_DETAIL("Creating maestro-rt singleton completed");
+  LOG_DETAIL("Creating maestro singleton completed");
 
   return true;
 }

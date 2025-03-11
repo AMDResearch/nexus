@@ -6,7 +6,7 @@ include_guard()
 option(NEXUS_WERROR "Make all warnings into errors." OFF)
 
 
-function(maestro_compiler_options TARGET)
+function(nexus_compiler_options TARGET)
     set_target_properties(${TARGET}
         PROPERTIES
             CXX_STANDARD                23
@@ -21,7 +21,7 @@ function(maestro_compiler_options TARGET)
     )
 endfunction()
 
-function(maestro_compiler_warnings TARGET)
+function(nexus_compiler_warnings TARGET)
     message("Adding ${TARGET}")
     target_compile_options(${TARGET} INTERFACE
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>

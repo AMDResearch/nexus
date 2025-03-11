@@ -7,6 +7,5 @@ export NEXUS_LOG_LEVEL=3
 binary=./test/vector_add
 # binary=./test/vector_add_template
 
-# gdb
-$binary
+gdb $binary
 

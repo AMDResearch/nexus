@@ -6,8 +6,8 @@ cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(
     nexus
     VERSION       0.1.0
-    DESCRIPTION   "Maestro Tracing"
-    HOMEPAGE_URL  "https://github.com/AARInternal/maestro"
+    DESCRIPTION   "Mapping packets to code"
+    HOMEPAGE_URL  "https://github.com/AARInternal/nexus"
     LANGUAGES     CXX C
 )
 
@@ -16,7 +16,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake/Modules)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # helper functions
-include(cmake/MaestroCompilerOptions.cmake)
+include(cmake/NexusCompilerOptions.cmake)
 
 # disable in-source builds to avoid source tree corruption
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 ### Copyright (c) 2025 Advanced Micro Devices, Inc. All rights reserved. ###
 
-include(${PROJECT_SOURCE_DIR}/cmake/MaestroCompilerOptions.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/NexusCompilerOptions.cmake)
 message("PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 include(FetchContent)
 
@@ -51,8 +51,8 @@ target_sources(nexus
         ${CMAKE_CURRENT_SOURCE_DIR}/nexus.cpp
 )
 
-maestro_compiler_warnings(nexus)
-maestro_compiler_options(nexus)
+nexus_compiler_warnings(nexus)
+nexus_compiler_options(nexus)
 
 target_link_libraries(nexus
     PUBLIC
