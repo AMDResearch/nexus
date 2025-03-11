@@ -88,11 +88,10 @@ nexus::nexus(HsaApiTable* table,
     LOG_INFO("Number of lines: {}", lines.size());
     LOG_INFO("Filename: {}", kernel_filename);
     for (auto& line : lines) {
-      LOG_INFO("Kernel {}:{}", kernel, line);
       try {
         const auto& inst = kdb_->getInstructionsForLine(kernel, line);
         for (size_t idx = 0; idx < inst.size(); idx++) {
-          LOG_INFO("{} -> {}", line, inst[idx].disassembly_);
+          LOG_INFO("{}:{} -> {}", kernel_filename, line, inst[idx].disassembly_);
         }
       } catch (std::runtime_error e) {
         LOG_ERROR("Error: {}", e.what());
