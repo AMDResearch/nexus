@@ -8,6 +8,7 @@ build/
 *.out
 *.txt
 *.hipfb
+!CMakeLists.txt
 
 # Python
 */__pycache__/
