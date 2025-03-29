@@ -21,7 +21,7 @@ CPMAddPackage("gh:fmtlib/fmt#7.1.3")
 CPMAddPackage(
     NAME kernelDB
     GIT_REPOSITORY git@github.com:AARInternal/kerneldb.git
-    GIT_TAG muhaawad/fix-cmake-target
+    GIT_TAG b3adfe98e3b20758bb158abc144f95fc4365d064
 )
 
 CPMAddPackage("gh:nlohmann/json@3.11.3")
