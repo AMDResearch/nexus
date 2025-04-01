@@ -14,6 +14,7 @@
 #include <hsa/hsa_ven_amd_aqlprofile.h>
 #include <hsa/hsa_ven_amd_loader.h>
 #include "log.hpp"
+#include <nlohmann/json.hpp>
 
 #include "include/kernelDB.h"
 
@@ -78,7 +79,7 @@ struct HsaAgent {
     bool is_gpu;
     std::vector<HsaMemoryPool> memory_pools;
     std::vector<HsaMemoryRegion> memory_regions;
-
+  
     HsaAgent() = default;
     explicit HsaAgent(hsa_agent_t a) : agent(a), is_gpu(false) {}
 
@@ -275,6 +276,7 @@ class nexus {
 
   HsaApiTable* api_table_;
   HsaApiTable rocr_api_table_;
+  nlohmann::json json_;
 
   std::map<hsa_queue_t*, std::pair<unsigned int, std::uint64_t>> queue_ids_;
   std::map<hsa_agent_t, std::string, hsa_agent_compare> agents_names_;

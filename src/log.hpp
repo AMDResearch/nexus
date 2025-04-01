@@ -114,8 +114,13 @@ inline void log_message(const LogLevel level,
         formatted_message = msg;
       }
 
-      std::printf("%s[%s]: [%s:%d] %s%s\n", color, log_level_to_string(level),
-                  file.c_str(), line, formatted_message.c_str(), color_reset);
+      std::printf("%s[%s]: [%s:%d] %s%s\n",
+                  color,
+                  log_level_to_string(level),
+                  file.c_str(),
+                  line,
+                  formatted_message.c_str(),
+                  color_reset);
 
       static const char* log_file = std::getenv("NEXUS_LOG_FILE");
       if (log_file) {
@@ -136,12 +141,18 @@ inline void log_message(const LogLevel level,
 #define LOG_DETAIL(msg, ...)                                                 \
   maestro::detail::log_message(maestro::detail::LogLevel::DETAIL,            \
                                maestro::detail::get_relative_path(__FILE__), \
-                               __LINE__, msg, ##__VA_ARGS__)
+                               __LINE__,                                     \
+                               msg,                                          \
+                               ##__VA_ARGS__)
 #define LOG_INFO(msg, ...)                                                   \
   maestro::detail::log_message(maestro::detail::LogLevel::INFO,              \
                                maestro::detail::get_relative_path(__FILE__), \
-                               __LINE__, msg, ##__VA_ARGS__)
+                               __LINE__,                                     \
+                               msg,                                          \
+                               ##__VA_ARGS__)
 #define LOG_ERROR(msg, ...)                                                  \
   maestro::detail::log_message(maestro::detail::LogLevel::ERROR,             \
                                maestro::detail::get_relative_path(__FILE__), \
-                               __LINE__, msg, ##__VA_ARGS__)
+                               __LINE__,                                     \
+                               msg,                                          \
+                               ##__VA_ARGS__)

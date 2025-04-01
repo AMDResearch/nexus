@@ -17,7 +17,6 @@ int main() {
 
   hipDeviceSynchronize();
 
-  std::cout << "Empty kernel executed successfully with argument: " << arg
-            << std::endl;
+  std::cout << "Empty kernel executed successfully with argument: " << arg << std::endl;
   return 0;
 }

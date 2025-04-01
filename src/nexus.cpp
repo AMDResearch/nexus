@@ -22,7 +22,6 @@
 #include <memory>
 #include <optional>
 #include <sstream>
-#include <nlohmann/json.hpp>
 
 #include <hip/hip_runtime.h>
 
@@ -35,29 +34,28 @@ nexus* nexus::singleton_{nullptr};
 static std::string read_line_from_file(const std::string& filename, size_t line_number) {
   std::ifstream file(filename);
   if (!file) {
-      LOG_ERROR("Cannot open file {}", filename);
-      return "";
+    LOG_ERROR("Cannot open file {}", filename);
+    return "";
   }
 
   std::string line;
   size_t current_line = 0;
 
   while (std::getline(file, line)) {
-      if (current_line == line_number) {
-          return line;
-      }
-      current_line++;
+    if (current_line == line_number) {
+      return line;
+    }
+    current_line++;
   }
   LOG_ERROR("Error: Line number {} not found in file {}", line_number, filename);
   return "";
 }
 
 nexus::nexus(HsaApiTable* table,
-               uint64_t runtime_version,
-               uint64_t failed_tool_count,
-               const char* const* failed_tool_names)
+             uint64_t runtime_version,
+             uint64_t failed_tool_count,
+             const char* const* failed_tool_names)
     : api_table_{table} {
-
   LOG_DETAIL("Saving current APIs.");
   save_hsa_api();
   LOG_DETAIL("Hooking new APIs.");
@@ -66,8 +64,7 @@ nexus::nexus(HsaApiTable* table,
   discover_agents();
 
   for (const auto& pair : agents_names_) {
-    LOG_DETAIL("Agent Handle: 0x{:x} , Name: {}", pair.first.handle,
-               pair.second);
+    LOG_DETAIL("Agent Handle: 0x{:x} , Name: {}", pair.first.handle, pair.second);
   }
 
   // Create the FIFO
@@ -129,19 +126,16 @@ static void* memcpy_d2h(const void* device_ptr,
       for (const auto& region : agent.memory_regions) {
         if (region.is_global) {  // Fine-grained memory for CPU
           void* host_ptr = nullptr;
-          hsa_status_t status =
-              hsa_memory_allocate(region.region, size, &host_ptr);
+          hsa_status_t status = hsa_memory_allocate(region.region, size, &host_ptr);
 
           LOG_DETAIL("Allocated CPU pointer {} ({} bytes).", host_ptr, size);
           if (status != HSA_STATUS_SUCCESS || host_ptr == nullptr) {
-            LOG_DETAIL("Failed to allocate fine-grained host memory of size {}",
-                       size);
+            LOG_DETAIL("Failed to allocate fine-grained host memory of size {}", size);
             return nullptr;
           }
 
           // Copy memory from device to host
-          LOG_DETAIL("D2H copying to {} from ({} bytes).", host_ptr, device_ptr,
-                     size);
+          LOG_DETAIL("D2H copying to {} from ({} bytes).", host_ptr, device_ptr, size);
 
           status = hsa_memory_copy(host_ptr, device_ptr, size);
           if (status != HSA_STATUS_SUCCESS) {
@@ -161,9 +155,7 @@ static void* memcpy_d2h(const void* device_ptr,
 }
 
 template <typename T, typename Func, std::size_t... Is>
-inline void for_each_field_impl(const T& obj,
-                                Func func,
-                                std::index_sequence<Is...>) {
+inline void for_each_field_impl(const T& obj, Func func, std::index_sequence<Is...>) {
   (func(std::get<Is>(obj->as_tuple())), ...);
 }
 template <typename T, typename Func>
@@ -172,8 +164,7 @@ inline void for_each_field(const T& obj, Func func) {
   for_each_field_impl(obj, func, std::make_index_sequence<N>{});
 }
 
-void printHipIpcMemHandle(const hipIpcMemHandle_t& handle,
-                          const std::string& message) {
+void printHipIpcMemHandle(const hipIpcMemHandle_t& handle, const std::string& message) {
   const unsigned char* data = reinterpret_cast<const unsigned char*>(&handle);
   LOG_DETAIL("{} hipIpcMemHandle_t contents:", message);
 
@@ -208,20 +199,17 @@ void writeIpcHandleToFile(const hipIpcMemHandle_t& handle, size_t ptr_size) {
   file.flush();
   file.close();
 
-  LOG_DETAIL("Appended IPC handle and size ({} bytes) to file: {}", ptr_size,
-             file_name);
+  LOG_DETAIL("Appended IPC handle and size ({} bytes) to file: {}", ptr_size, file_name);
 }
 void nexus::send_message_and_wait(void* args) {}
 
 void nexus::discover_agents() {
   auto agent_callback = [](hsa_agent_t agent, void* data) -> hsa_status_t {
     auto* agents_map =
-        static_cast<std::map<hsa_agent_t, std::string, hsa_agent_compare>*>(
-            data);
+        static_cast<std::map<hsa_agent_t, std::string, hsa_agent_compare>*>(data);
 
     char name[64] = {0};
-    if (hsa_agent_get_info(agent, HSA_AGENT_INFO_NAME, name) !=
-        HSA_STATUS_SUCCESS) {
+    if (hsa_agent_get_info(agent, HSA_AGENT_INFO_NAME, name) != HSA_STATUS_SUCCESS) {
       return HSA_STATUS_ERROR;
     }
     (*agents_map)[agent] = std::string(name);
@@ -282,8 +270,7 @@ std::string nexus::packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet) {
       }
 
       buff << "Dispatch Packet\n"
-           << fmt::format("\tKernel name: {}\n", kernel_name)
-           << "\tRelease Scope: ";
+           << fmt::format("\tKernel name: {}\n", kernel_name) << "\tRelease Scope: ";
 
       if (scope & HSA_FENCE_SCOPE_AGENT) {
         buff << "HSA_FENCE_SCOPE_AGENT";
@@ -304,24 +291,18 @@ std::string nexus::packet_to_text(const hsa_ext_amd_aql_pm4_packet_t* packet) {
       }
 
       buff << fmt::format("\n\tsetup: 0x{:x}\n", disp->setup);
-      buff << fmt::format("\tworkgroup_size_x: 0x{:x}\n",
-                          disp->workgroup_size_x);
-      buff << fmt::format("\tworkgroup_size_y: 0x{:x}\n",
-                          disp->workgroup_size_y);
-      buff << fmt::format("\tworkgroup_size_z: 0x{:x}\n",
-                          disp->workgroup_size_z);
+      buff << fmt::format("\tworkgroup_size_x: 0x{:x}\n", disp->workgroup_size_x);
+      buff << fmt::format("\tworkgroup_size_y: 0x{:x}\n", disp->workgroup_size_y);
+      buff << fmt::format("\tworkgroup_size_z: 0x{:x}\n", disp->workgroup_size_z);
       buff << fmt::format("\tgrid_size_x: 0x{:x}\n", disp->grid_size_x);
       buff << fmt::format("\tgrid_size_y: 0x{:x}\n", disp->grid_size_y);
       buff << fmt::format("\tgrid_size_z: 0x{:x}\n", disp->grid_size_z);
-      buff << fmt::format("\tprivate_segment_size: 0x{:x}\n",
-                          disp->private_segment_size);
-      buff << fmt::format("\tgroup_segment_size: 0x{:x}\n",
-                          disp->group_segment_size);
+      buff << fmt::format("\tprivate_segment_size: 0x{:x}\n", disp->private_segment_size);
+      buff << fmt::format("\tgroup_segment_size: 0x{:x}\n", disp->group_segment_size);
       buff << fmt::format("\tkernel_object: 0x{:x}\n", disp->kernel_object);
       buff << fmt::format("\tkernarg_address: 0x{:x}\n",
                           reinterpret_cast<uintptr_t>(disp->kernarg_address));
-      buff << fmt::format("\tcompletion_signal: 0x{:x}",
-                          disp->completion_signal.handle);
+      buff << fmt::format("\tcompletion_signal: 0x{:x}", disp->completion_signal.handle);
       break;
     }
     case HSA_PACKET_TYPE_BARRIER_AND: {
@@ -366,14 +347,14 @@ std::optional<std::string> nexus::is_traceable_packet(
 }
 
 nexus* nexus::get_instance(HsaApiTable* table,
-                             uint64_t runtime_version,
-                             uint64_t failed_tool_count,
-                             const char* const* failed_tool_names) {
+                           uint64_t runtime_version,
+                           uint64_t failed_tool_count,
+                           const char* const* failed_tool_names) {
   const std::lock_guard<std::mutex> lock(mutex_);
   if (!singleton_) {
     if (table != NULL) {
-      singleton_ = new nexus(table, runtime_version, failed_tool_count,
-                              failed_tool_names);
+      singleton_ =
+          new nexus(table, runtime_version, failed_tool_count, failed_tool_names);
     } else {
     }
   }
@@ -387,17 +368,21 @@ nexus::~nexus() {
   delete rocr_api_table_.image_ext_;
 }
 
-hsa_status_t nexus::hsa_executable_get_symbol_by_name(
-    hsa_executable_t executable,
-    const char* symbol_name,
-    const hsa_agent_t* agent,
-    hsa_executable_symbol_t* symbol) {
-  LOG_DETAIL("Looking up the kernel {} (demangled: {})", symbol_name,
+hsa_status_t nexus::hsa_executable_get_symbol_by_name(hsa_executable_t executable,
+                                                      const char* symbol_name,
+                                                      const hsa_agent_t* agent,
+                                                      hsa_executable_symbol_t* symbol) {
+  LOG_DETAIL("Looking up the kernel {} (demangled: {})",
+             symbol_name,
              demangle_name(symbol_name));
 
   auto instance = get_instance();
-  auto result = hsa_core_call(instance, hsa_executable_get_symbol_by_name,
-                              executable, symbol_name, agent, symbol);
+  auto result = hsa_core_call(instance,
+                              hsa_executable_get_symbol_by_name,
+                              executable,
+                              symbol_name,
+                              agent,
+                              symbol);
 
   {
     std::lock_guard g(mutex_);
@@ -414,16 +399,15 @@ hsa_status_t nexus::hsa_executable_symbol_get_info(
     hsa_executable_symbol_info_t attribute,
     void* value) {
   auto instance = get_instance();
-  auto result = hsa_core_call(instance, hsa_executable_symbol_get_info,
-                              executable_symbol, attribute, value);
+  auto result = hsa_core_call(
+      instance, hsa_executable_symbol_get_info, executable_symbol, attribute, value);
 
   if (result == HSA_STATUS_SUCCESS &&
       attribute == HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT) {
     LOG_DETAIL("Looking up the symbol 0x{:x}", executable_symbol.handle);
 
     std::lock_guard g(mutex_);
-    instance->handles_symbols_[*static_cast<std::uint64_t*>(value)] =
-        executable_symbol;
+    instance->handles_symbols_[*static_cast<std::uint64_t*>(value)] = executable_symbol;
   }
   return result;
 }
@@ -435,12 +419,11 @@ void nexus::save_hsa_api() {
   rocr_api_table_.image_ext_ = new ImageExtTable();
 
   std::memcpy(rocr_api_table_.core_, api_table_->core_, sizeof(CoreApiTable));
-  std::memcpy(rocr_api_table_.amd_ext_, api_table_->amd_ext_,
-              sizeof(AmdExtTable));
-  std::memcpy(rocr_api_table_.finalizer_ext_, api_table_->finalizer_ext_,
+  std::memcpy(rocr_api_table_.amd_ext_, api_table_->amd_ext_, sizeof(AmdExtTable));
+  std::memcpy(rocr_api_table_.finalizer_ext_,
+              api_table_->finalizer_ext_,
               sizeof(FinalizerExtTable));
-  std::memcpy(rocr_api_table_.image_ext_, api_table_->image_ext_,
-              sizeof(ImageExtTable));
+  std::memcpy(rocr_api_table_.image_ext_, api_table_->image_ext_, sizeof(ImageExtTable));
 }
 void nexus::restore_hsa_api() {
   copyTables(&rocr_api_table_, api_table_);
@@ -463,36 +446,36 @@ void nexus::hook_api() {
 hsa_status_t nexus::add_queue(hsa_queue_t* queue, hsa_agent_t agent) {
   std::lock_guard<std::mutex> lock(mm_mutex_);
   auto instance = get_instance();
-  auto result = hsa_ext_call(instance, hsa_amd_profiling_set_profiler_enabled,
-                             queue, true);
+  auto result =
+      hsa_ext_call(instance, hsa_amd_profiling_set_profiler_enabled, queue, true);
   return result;
 }
 
 void nexus::on_submit_packet(const void* in_packets,
-                              uint64_t count,
-                              uint64_t user_que_idx,
-                              void* data,
-                              hsa_amd_queue_intercept_packet_writer writer) {
+                             uint64_t count,
+                             uint64_t user_que_idx,
+                             void* data,
+                             hsa_amd_queue_intercept_packet_writer writer) {
   auto instance = get_instance();
   if (instance) {
     hsa_queue_t* queue = reinterpret_cast<hsa_queue_t*>(data);
-    instance->write_packets(
-        queue, static_cast<const hsa_ext_amd_aql_pm4_packet_t*>(in_packets),
-        count, writer);
+    instance->write_packets(queue,
+                            static_cast<const hsa_ext_amd_aql_pm4_packet_t*>(in_packets),
+                            count,
+                            writer);
   }
 }
 
 void nexus::write_packets(hsa_queue_t* queue,
-                           const hsa_ext_amd_aql_pm4_packet_t* packet,
-                           uint64_t count,
-                           hsa_amd_queue_intercept_packet_writer writer) {
+                          const hsa_ext_amd_aql_pm4_packet_t* packet,
+                          uint64_t count,
+                          hsa_amd_queue_intercept_packet_writer writer) {
   try {
     LOG_DETAIL("Executing packet: {}", packet_to_text(packet));
     auto instance = get_instance();
 
     hsa_signal_t new_signal;
-    auto status =
-        hsa_core_call(instance, hsa_signal_create, 1, 0, nullptr, &new_signal);
+    auto status = hsa_core_call(instance, hsa_signal_create, 1, 0, nullptr, &new_signal);
 
     if (status != HSA_STATUS_SUCCESS) {
       LOG_ERROR("Failed to create signal");
@@ -505,8 +488,8 @@ void nexus::write_packets(hsa_queue_t* queue,
 
     writer(&modified_packet, count);
 
-    hsa_signal_wait_scacquire(new_signal, HSA_SIGNAL_CONDITION_EQ, 0,
-                              UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+    hsa_signal_wait_scacquire(
+        new_signal, HSA_SIGNAL_CONDITION_EQ, 0, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
 
     if (old_signal.handle != 0) {
       hsa_core_call(instance, hsa_signal_subtract_relaxed, old_signal, 1);
@@ -515,45 +498,51 @@ void nexus::write_packets(hsa_queue_t* queue,
 
     auto kernel_string = is_traceable_packet(packet);
     if (kernel_string.has_value()) {
-
       const char* env_trace_path = std::getenv("TRACE_OUTPUT_PATH");
       std::filesystem::path trace_path(env_trace_path);
       if (env_trace_path) {
         try {
-            std::filesystem::create_directories(trace_path);
+          std::filesystem::create_directories(trace_path);
         } catch (const std::filesystem::filesystem_error& e) {
-            LOG_ERROR("Failed to create output directory {} with error {}", trace_path.c_str(), e.what());
+          LOG_ERROR("Failed to create output directory {} with error {}",
+                    trace_path.c_str(),
+                    e.what());
         }
       } else {
-          LOG_ERROR("Storing output to working directory. Set TRACE_OUTPUT_PATH to control where to store the output");
+        LOG_ERROR(
+            "Storing output to working directory. Set TRACE_OUTPUT_PATH to control where "
+            "to store the output");
       }
 
-
       std::vector<uint32_t> lines;
-      nlohmann::json json;
+
       kdb_->getKernelLines(kernel_string.value(), lines);
       std::size_t cur_offset{0};
-      for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++){
+
+      // std::lock_guard<std::mutex> lock(mutex_);
+
+      for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++) {
         const auto& line = lines[line_idx];
         const auto& inst = kdb_->getInstructionsForLine(kernel_string.value(), line);
 
         for (size_t idx = 0; idx < inst.size(); idx++) {
           auto instruction = inst[idx].disassembly_;
           const auto filename = inst[idx].file_name_;
-          instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'), instruction.end());
-          json[std::to_string(cur_offset)] = {
-            {"file", filename},
-            {"line", line - 1},
-            {"hip", read_line_from_file(filename, line - 1)},
-            {"assembly", instruction},
-            {"hip", instruction},
+          instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                            instruction.end());
+          json_[std::to_string(cur_offset)] = {
+              {"file", filename},
+              {"line", line - 1},
+              {"hip", read_line_from_file(filename, line - 1)},
+              {"assembly", instruction},
+              {"hip", instruction},
           };
           cur_offset++;
           LOG_INFO("{}:{} -> {}", inst[idx].file_name_, line, inst[idx].disassembly_);
         }
       }
 
-      json["signature"] = kernel_string.value();
+      json_["signature"] = kernel_string.value();
 
       std::string filename = kernel_string.value();
       std::replace(filename.begin(), filename.end(), ' ', '_');
@@ -561,9 +550,9 @@ void nexus::write_packets(hsa_queue_t* queue,
 
       std::ofstream file(json_path);
       if (file) {
-          file << json.dump(4);
+        file << json_.dump(4);
       } else {
-        LOG_DETAIL("Dumpted the kernel at: {}", json_path.c_str());
+        LOG_DETAIL("Dumped the kernel at: {}", json_path.c_str());
       }
       LOG_DETAIL("Actual kernel string: {}", kernel_string.value());
     }
@@ -573,12 +562,12 @@ void nexus::write_packets(hsa_queue_t* queue,
 }
 
 hsa_status_t nexus::hsa_amd_memory_pool_allocate(hsa_amd_memory_pool_t pool,
-                                                  size_t size,
-                                                  uint32_t flags,
-                                                  void** ptr) {
+                                                 size_t size,
+                                                 uint32_t flags,
+                                                 void** ptr) {
   auto instance = get_instance();
-  const auto result = hsa_ext_call(instance, hsa_amd_memory_pool_allocate, pool,
-                                   size, flags, ptr);
+  const auto result =
+      hsa_ext_call(instance, hsa_amd_memory_pool_allocate, pool, size, flags, ptr);
   if (result == HSA_STATUS_SUCCESS && *ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
     instance->pointer_sizes_[*ptr] = size;
@@ -586,12 +575,9 @@ hsa_status_t nexus::hsa_amd_memory_pool_allocate(hsa_amd_memory_pool_t pool,
   }
   return result;
 }
-hsa_status_t nexus::hsa_memory_allocate(hsa_region_t region,
-                                         size_t size,
-                                         void** ptr) {
+hsa_status_t nexus::hsa_memory_allocate(hsa_region_t region, size_t size, void** ptr) {
   auto instance = get_instance();
-  const auto result =
-      hsa_core_call(instance, hsa_memory_allocate, region, size, ptr);
+  const auto result = hsa_core_call(instance, hsa_memory_allocate, region, size, ptr);
   if (result == HSA_STATUS_SUCCESS && *ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
     instance->pointer_sizes_[*ptr] = size;
@@ -601,30 +587,39 @@ hsa_status_t nexus::hsa_memory_allocate(hsa_region_t region,
 }
 
 hsa_status_t nexus::hsa_queue_create(hsa_agent_t agent,
-                                      uint32_t size,
-                                      hsa_queue_type32_t type,
-                                      void (*callback)(hsa_status_t status,
-                                                       hsa_queue_t* source,
-                                                       void* data),
-                                      void* data,
-                                      uint32_t private_segment_size,
-                                      uint32_t group_segment_size,
-                                      hsa_queue_t** queue) {
+                                     uint32_t size,
+                                     hsa_queue_type32_t type,
+                                     void (*callback)(hsa_status_t status,
+                                                      hsa_queue_t* source,
+                                                      void* data),
+                                     void* data,
+                                     uint32_t private_segment_size,
+                                     uint32_t group_segment_size,
+                                     hsa_queue_t** queue) {
   LOG_DETAIL("Creating nexus queue");
 
   hsa_status_t result = HSA_STATUS_SUCCESS;
   auto instance = get_instance();
   try {
-    result = hsa_ext_call(instance, hsa_amd_queue_intercept_create, agent, size,
-                          type, callback, data, private_segment_size,
-                          group_segment_size, queue);
+    result = hsa_ext_call(instance,
+                          hsa_amd_queue_intercept_create,
+                          agent,
+                          size,
+                          type,
+                          callback,
+                          data,
+                          private_segment_size,
+                          group_segment_size,
+                          queue);
 
     if (result == HSA_STATUS_SUCCESS) {
       auto result = instance->add_queue(*queue, agent);
       if (result != HSA_STATUS_SUCCESS) {
         LOG_ERROR("Failed to add queue {} ", static_cast<int>(result));
       }
-      result = hsa_ext_call(instance, hsa_amd_queue_intercept_register, *queue,
+      result = hsa_ext_call(instance,
+                            hsa_amd_queue_intercept_register,
+                            *queue,
                             nexus::on_submit_packet,
                             reinterpret_cast<void*>(*queue));
       if (result != HSA_STATUS_SUCCESS) {
