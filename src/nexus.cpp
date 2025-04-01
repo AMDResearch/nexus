@@ -627,8 +627,8 @@ void nexus::write_packets(hsa_queue_t* queue,
 
         json_["kernels"][kernel_name]["lines"] = std::move(line_array);
         json_["kernels"][kernel_name]["files"] = std::move(file_array);
-        json_["kernels"][kernel_name]["hips"] = std::move(hip_array);
-        json_["kernels"][kernel_name]["assemblies"] = std::move(assembly_array);
+        json_["kernels"][kernel_name]["hip"] = std::move(hip_array);
+        json_["kernels"][kernel_name]["assembly"] = std::move(assembly_array);
         json_["kernels"][kernel_name]["signature"] = kernel_name;
 
         std::filesystem::path json_path = env_trace_path;
