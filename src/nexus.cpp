@@ -567,19 +567,7 @@ void nexus::write_packets(hsa_queue_t* queue,
       return;
     }
 
-    hsa_ext_amd_aql_pm4_packet_t modified_packet = *packet;
-    hsa_signal_t old_signal = modified_packet.completion_signal;
-    modified_packet.completion_signal = new_signal;
-
-    writer(&modified_packet, count);
-
-    hsa_signal_wait_scacquire(
-        new_signal, HSA_SIGNAL_CONDITION_EQ, 0, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
-
-    if (old_signal.handle != 0) {
-      hsa_core_call(instance, hsa_signal_subtract_relaxed, old_signal, 1);
-    }
-    hsa_core_call(instance, hsa_signal_destroy, new_signal);
+    writer(packet, count);
 
     auto kernel_string = is_traceable_packet(packet);
     if (kernel_string.has_value()) {
