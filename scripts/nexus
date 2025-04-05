@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Default values
+LOG_LEVEL=0
+OUTPUT_FILE="result.json"
+EXTRA_SEARCH_PREFIX=""
+APP_COMMAND=()
+
+# Print usage
+usage() {
+  echo "Usage: $0 [--log-level <0-4>] [--output <file>] [--search-prefix <prefixes>] <command...>"
+  echo "Short options: -l, -o, -s, -h"
+  echo ""
+  echo "Examples:"
+  echo "  $0 -l 2 -o out.json -s './test' ./vector_add"
+  echo "  $0 python test/add.py"
+  exit 1
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --log-level|-l)
+      LOG_LEVEL="$2"
+      shift 2
+      ;;
+    --output|-o)
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    --search-prefix|-s)
+      EXTRA_SEARCH_PREFIX="$2"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      ;;
+    --*|-*)
+      echo "Unknown option: $1"
+      usage
+      ;;
+    *)
+      APP_COMMAND=("$@")
+      break
+      ;;
+  esac
+done
+
+if [ ${#APP_COMMAND[@]} -eq 0 ]; then
+  echo "Error: No application command provided."
+  usage
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NEXUS_LIB_PATH="${SCRIPT_DIR}/../build/lib/libnexus.so"
+
+export HSA_TOOLS_LIB="${NEXUS_LIB_PATH}"
+export NEXUS_LOG_LEVEL="$LOG_LEVEL"
+export NEXUS_OUTPUT_FILE="$OUTPUT_FILE"
+
+if [ -n "$EXTRA_SEARCH_PREFIX" ]; then
+  export NEXUS_EXTRA_SEARCH_PREFIX="$EXTRA_SEARCH_PREFIX"
+fi
+
+echo "Running: ${APP_COMMAND[*]}"
+exec "${APP_COMMAND[@]}"

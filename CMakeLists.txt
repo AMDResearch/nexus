@@ -41,6 +41,10 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif ()
 
+# enable tests if requested
+option(NEXUS_BUILD_TESTS "Build the test suite" ON)
+
+
 # target
 add_library(nexus SHARED)
 add_library(nexus::nexus ALIAS nexus)
@@ -90,3 +94,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # sources
 add_subdirectory(src)
+
+
+if(NEXUS_BUILD_TESTS)
+    message("Building tests...")
+    add_subdirectory(test)
+endif()
