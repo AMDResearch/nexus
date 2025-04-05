@@ -16,14 +16,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cstdlib>
 #include <exception>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
-
-#include <hip/hip_runtime.h>
+#include <vector>
 
 namespace maestro {
 
@@ -32,22 +32,50 @@ std::shared_mutex nexus::stop_mutex_{};
 nexus* nexus::singleton_{nullptr};
 
 static std::string read_line_from_file(const std::string& filename, size_t line_number) {
-  std::ifstream file(filename);
-  if (!file) {
-    LOG_ERROR("Cannot open file {}", filename);
+  auto try_open = [](const std::string& path) -> std::ifstream {
+    return std::ifstream(path);
+  };
+
+  auto try_read_line = [&](std::ifstream& file, const std::string& path) -> std::string {
+    std::string line;
+    size_t current_line = 0;
+
+    while (std::getline(file, line)) {
+      if (current_line == line_number) {
+        return line;
+      }
+      ++current_line;
+    }
+
+    LOG_ERROR("Line number {} not found in file {}", line_number, path);
+    return "";
+  };
+
+  std::ifstream file = try_open(filename);
+  if (file) {
+    return try_read_line(file, filename);
+  }
+
+  const char* env = std::getenv("NEXUS_EXTRA_SEARCH_PREFIX");
+  if (!env) {
+    LOG_ERROR("Cannot open file {} and NEXUS_EXTRA_SEARCH_PREFIX not set", filename);
     return "";
   }
 
-  std::string line;
-  size_t current_line = 0;
+  std::string env_str(env);
+  std::stringstream ss(env_str);
+  std::string root;
 
-  while (std::getline(file, line)) {
-    if (current_line == line_number) {
-      return line;
+  while (std::getline(ss, root, ';')) {
+    std::string full_path = root + "/" + filename;
+    std::ifstream alt_file = try_open(full_path);
+    if (alt_file) {
+      return try_read_line(alt_file, full_path);
     }
-    current_line++;
   }
-  LOG_ERROR("Error: Line number {} not found in file {}", line_number, filename);
+
+  LOG_ERROR("Cannot open file {} in any of the NEXUS_EXTRA_SEARCH_PREFIX paths",
+            filename);
   return "";
 }
 
