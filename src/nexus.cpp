@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -642,6 +643,8 @@ void nexus::write_packets(hsa_queue_t* queue,
         nlohmann::json hip_array = nlohmann::json::array();
         nlohmann::json assembly_array = nlohmann::json::array();
 
+        std::set<std::pair<std::string, uint32_t>> seen_lines;
+
         for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++) {
           const auto& line = lines[line_idx];
           const auto& inst = kdb_->getInstructionsForLine(kernel_string.value(), line);
@@ -649,6 +652,13 @@ void nexus::write_packets(hsa_queue_t* queue,
           for (const auto& instruction_obj : inst) {
             auto instruction = instruction_obj.disassembly_;
             const auto& filename = instruction_obj.file_name_;
+            std::pair<std::string, uint32_t> line_key = {filename, line};
+
+            if (seen_lines.count(line_key)) {
+              continue;
+            }
+            seen_lines.insert(line_key);
+
             instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
                               instruction.end());
 
