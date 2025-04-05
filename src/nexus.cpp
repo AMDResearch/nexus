@@ -66,7 +66,7 @@ static std::string read_line_from_file(const std::string& filename, size_t line_
   std::stringstream ss(env_str);
   std::string root;
 
-  while (std::getline(ss, root, ';')) {
+  while (std::getline(ss, root, ':')) {
     std::string full_path = root + "/" + filename;
     std::ifstream alt_file = try_open(full_path);
     if (alt_file) {
