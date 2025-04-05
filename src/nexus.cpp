@@ -51,7 +51,7 @@ static std::optional<std::string> find_file_path(const std::string& filename) {
   // 2. Try environment variable search
   const char* env = std::getenv("NEXUS_EXTRA_SEARCH_PREFIX");
   if (!env) {
-    LOG_ERROR("Cannot open file {} and NEXUS_EXTRA_SEARCH_PREFIX not set", filename);
+    LOG_WARN("Cannot open file {} and NEXUS_EXTRA_SEARCH_PREFIX not set", filename);
     return std::nullopt;
   }
 
@@ -81,15 +81,14 @@ static std::optional<std::string> find_file_path(const std::string& filename) {
     }
   }
 
-  LOG_ERROR("Cannot find file {} in any of the NEXUS_EXTRA_SEARCH_PREFIX paths",
-            filename);
+  LOG_WARN("Cannot find file {} in any of the NEXUS_EXTRA_SEARCH_PREFIX paths", filename);
   return std::nullopt;
 }
 
 static std::string read_line_from_file(const std::string& full_path, size_t line_number) {
   std::ifstream file(full_path);
   if (!file) {
-    LOG_ERROR("Failed to open file {}", full_path);
+    LOG_WARN("Failed to open file {}", full_path);
     return "";
   }
 
@@ -103,7 +102,7 @@ static std::string read_line_from_file(const std::string& full_path, size_t line
     ++current_line;
   }
 
-  LOG_ERROR("Line number {} not found in file {}", line_number, full_path);
+  LOG_WARN("Line number {} not found in file {}", line_number, full_path);
   return "";
 }
 
@@ -123,18 +122,6 @@ nexus::nexus(HsaApiTable* table,
     LOG_DETAIL("Agent Handle: 0x{:x} , Name: {}", pair.first.handle, pair.second);
   }
 
-  // Create the FIFO
-  static const char* pipe_name = std::getenv("NEXUS_PIPE_NAME");
-  if (pipe_name) {
-    if (mkfifo(pipe_name, 0666) == -1 && errno != EEXIST) {
-      LOG_DETAIL("mkfifo failed");
-    }
-  } else {
-    LOG_INFO(
-        "NEXUS_PIPE_NAME is not set. Set it to communicate with driver "
-        "script.");
-  }
-
   HsaAgent::get_all_agents(agents_);
   for (const auto& agent : agents_) {
     agent.print_info();
@@ -148,31 +135,6 @@ nexus::nexus(HsaApiTable* table,
   }
   gpu_agent_ = gpu_agent;
   kdb_ = std::make_unique<kernelDB::kernelDB>(gpu_agent.agent);
-
-  if (kdb_) {
-    std::vector<std::string> kernels;
-    std::vector<uint32_t> lines;
-    kdb_->getKernels(kernels);
-    LOG_INFO("Found {} kernels", kernels.size());
-    for (std::size_t kernel_idx = 0; kernel_idx < kernels.size(); kernel_idx++) {
-      const auto kernel = kernels[kernel_idx];
-      std::vector<uint32_t> lines;
-      kdb_->getKernelLines(kernel, lines);
-      const auto kernel_filename = kdb_->getFileName(kernel, kernel_idx);
-      LOG_INFO("Kernel: {}", kernel);
-      LOG_INFO("Number of lines: {}", lines.size());
-      for (auto& line : lines) {
-        try {
-          const auto& inst = kdb_->getInstructionsForLine(kernel, line);
-          for (size_t idx = 0; idx < inst.size(); idx++) {
-            LOG_INFO("{}:{} -> {}", inst[idx].file_name_, line, inst[idx].disassembly_);
-          }
-        } catch (std::runtime_error e) {
-          LOG_ERROR("Error: {}", e.what());
-        }
-      }
-    }
-  }
 }
 
 static void* memcpy_d2h(const void* device_ptr,
@@ -211,55 +173,6 @@ static void* memcpy_d2h(const void* device_ptr,
   LOG_DETAIL("No suitable CPU agent with fine-grained memory found.");
   return nullptr;
 }
-
-template <typename T, typename Func, std::size_t... Is>
-inline void for_each_field_impl(const T& obj, Func func, std::index_sequence<Is...>) {
-  (func(std::get<Is>(obj->as_tuple())), ...);
-}
-template <typename T, typename Func>
-inline void for_each_field(const T& obj, Func func) {
-  constexpr std::size_t N = std::tuple_size_v<decltype(obj->as_tuple())>;
-  for_each_field_impl(obj, func, std::make_index_sequence<N>{});
-}
-
-void printHipIpcMemHandle(const hipIpcMemHandle_t& handle, const std::string& message) {
-  const unsigned char* data = reinterpret_cast<const unsigned char*>(&handle);
-  LOG_DETAIL("{} hipIpcMemHandle_t contents:", message);
-
-  std::ostringstream buffer;
-  buffer << std::hex << std::setfill('0');
-  for (size_t i = 0; i < sizeof(hipIpcMemHandle_t); ++i) {
-    buffer << std::setw(2) << static_cast<int>(data[i]) << " ";
-    if ((i + 1) % 16 == 0 || i + 1 == sizeof(hipIpcMemHandle_t)) {
-      LOG_DETAIL("{}", buffer.str());
-      buffer.str("");
-      buffer.clear();
-    }
-  }
-}
-
-void writeIpcHandleToFile(const hipIpcMemHandle_t& handle, size_t ptr_size) {
-  static const char* file_name = std::getenv("NEXUS_IPC_OUTPUT_FILE");
-  if (!file_name) {
-    LOG_ERROR("Set NEXUS_IPC_OUTPUT_FILE to communicate with driver script.");
-    std::terminate();
-  }
-  std::ofstream file(file_name, std::ios::binary | std::ios::app);
-  if (!file) {
-    LOG_ERROR("Failed to open file for writing:  {}", file_name);
-    return;
-  }
-
-  file << "BEGIN\n";
-  file.write(reinterpret_cast<const char*>(&handle), sizeof(handle));
-  file.write(reinterpret_cast<const char*>(&ptr_size), sizeof(ptr_size));
-  file << "END\n";
-  file.flush();
-  file.close();
-
-  LOG_DETAIL("Appended IPC handle and size ({} bytes) to file: {}", ptr_size, file_name);
-}
-void nexus::send_message_and_wait(void* args) {}
 
 void nexus::discover_agents() {
   auto agent_callback = [](hsa_agent_t agent, void* data) -> hsa_status_t {
