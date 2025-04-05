@@ -22,7 +22,7 @@ This will build the Nexus library and its dependencies. You can adjust the `CMAK
 
 ### Options
 
-* `NEXUS_LOG_LEVEL`: Verbosity level (0 = none, 1 = info, 2 = error, 3 = detail)
+* `NEXUS_LOG_LEVEL`: Verbosity level (0 = none, 1 = info, 2 = warning, 3 = error, 4 = detail)
 * `NEXUS_OUTPUT_FILE`: Path to the JSON output file
 * `NEXUS_EXTRA_SEARCH_PREFIX`: Additional search directories for HIP files with relative paths. Supports wildcards and is a colon-separated list.
 
