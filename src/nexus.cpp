@@ -2,6 +2,9 @@
 #define __HIP_PLATFORM_AMD__
 
 #include "nexus.hpp"
+
+#include <hip/hip_runtime.h>
+
 #include <fmt/core.h>
 #include "log.hpp"
 
@@ -9,22 +12,24 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <hip/hip_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <string>
 #include <vector>
 
+#include <sys/stat.h>
+#include <sys/types.h>
 namespace maestro {
 
 std::mutex nexus::mutex_{};
@@ -51,11 +56,13 @@ static std::string read_line_from_file(const std::string& filename, size_t line_
     return "";
   };
 
+  // 1. Try original path
   std::ifstream file = try_open(filename);
   if (file) {
     return try_read_line(file, filename);
   }
 
+  // 2. Try environment variable search
   const char* env = std::getenv("NEXUS_EXTRA_SEARCH_PREFIX");
   if (!env) {
     LOG_ERROR("Cannot open file {} and NEXUS_EXTRA_SEARCH_PREFIX not set", filename);
@@ -67,10 +74,26 @@ static std::string read_line_from_file(const std::string& filename, size_t line_
   std::string root;
 
   while (std::getline(ss, root, ':')) {
-    std::string full_path = root + "/" + filename;
-    std::ifstream alt_file = try_open(full_path);
-    if (alt_file) {
-      return try_read_line(alt_file, full_path);
+    if (root.empty())
+      continue;
+
+    if (root.back() == '*') {
+      // Recursive search
+      std::string base = root.substr(0, root.size() - 1);
+      for (const auto& entry : std::filesystem::recursive_directory_iterator(base)) {
+        if (entry.is_regular_file() && entry.path().string().ends_with(filename)) {
+          std::ifstream alt_file = try_open(entry.path().string());
+          if (alt_file) {
+            return try_read_line(alt_file, entry.path().string());
+          }
+        }
+      }
+    } else {
+      std::string full_path = root + "/" + filename;
+      std::ifstream alt_file = try_open(full_path);
+      if (alt_file) {
+        return try_read_line(alt_file, full_path);
+      }
     }
   }
 
