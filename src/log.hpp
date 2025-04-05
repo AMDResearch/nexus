@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <cstdio>
-
 #include <fmt/core.h>
 #include <unistd.h>
 #include <cstdio>
@@ -15,6 +13,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 extern "C" {
 extern char** environ;
@@ -67,23 +66,30 @@ inline void print_env_variables() {
 enum struct LogLevel {
   NONE,
   INFO,
+  WARN,
   ERROR,
   DETAIL,
 };
+
 constexpr auto operator+(LogLevel logLevel) noexcept {
   return static_cast<std::underlying_type_t<LogLevel>>(logLevel);
 }
 
 constexpr auto log_level_to_string(const LogLevel level) {
-  if (level == LogLevel::INFO) {
-    return "INFO";
-  } else if (level == LogLevel::ERROR) {
-    return "ERROR";
-  } else if (level == LogLevel::DETAIL) {
-    return "DETAIL";
+  switch (level) {
+    case LogLevel::INFO:
+      return "INFO";
+    case LogLevel::WARN:
+      return "WARN";
+    case LogLevel::ERROR:
+      return "ERROR";
+    case LogLevel::DETAIL:
+      return "DETAIL";
+    default:
+      return "";
   }
-  return "";
 }
+
 template <typename... Args>
 inline void log_message(const LogLevel level,
                         const std::string& file,
@@ -97,15 +103,22 @@ inline void log_message(const LogLevel level,
     if (log_level_env >= +level) {
       const char* color_reset = "\033[0m";
       const char* color_info = "\033[37m";
+      const char* color_warn = "\033[33m";
       const char* color_error = "\033[31m";
 
       if (!supports_colors()) {
         color_reset = "";
         color_info = "";
+        color_warn = "";
         color_error = "";
       }
 
-      const char* color = level == LogLevel::ERROR ? color_error : color_info;
+      const char* color = color_info;
+      if (level == LogLevel::ERROR) {
+        color = color_error;
+      } else if (level == LogLevel::WARN) {
+        color = color_warn;
+      }
 
       std::string formatted_message;
       if constexpr (sizeof...(args) > 0) {
@@ -135,6 +148,7 @@ inline void log_message(const LogLevel level,
     }
   }
 }
+
 }  // namespace detail
 }  // namespace maestro
 
@@ -144,12 +158,21 @@ inline void log_message(const LogLevel level,
                                __LINE__,                                     \
                                msg,                                          \
                                ##__VA_ARGS__)
+
 #define LOG_INFO(msg, ...)                                                   \
   maestro::detail::log_message(maestro::detail::LogLevel::INFO,              \
                                maestro::detail::get_relative_path(__FILE__), \
                                __LINE__,                                     \
                                msg,                                          \
                                ##__VA_ARGS__)
+
+#define LOG_WARN(msg, ...)                                                   \
+  maestro::detail::log_message(maestro::detail::LogLevel::WARN,              \
+                               maestro::detail::get_relative_path(__FILE__), \
+                               __LINE__,                                     \
+                               msg,                                          \
+                               ##__VA_ARGS__)
+
 #define LOG_ERROR(msg, ...)                                                  \
   maestro::detail::log_message(maestro::detail::LogLevel::ERROR,             \
                                maestro::detail::get_relative_path(__FILE__), \

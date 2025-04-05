@@ -37,37 +37,22 @@ std::mutex nexus::mutex_{};
 std::shared_mutex nexus::stop_mutex_{};
 nexus* nexus::singleton_{nullptr};
 
-static std::string read_line_from_file(const std::string& filename, size_t line_number) {
-  auto try_open = [](const std::string& path) -> std::ifstream {
-    return std::ifstream(path);
-  };
-
-  auto try_read_line = [&](std::ifstream& file, const std::string& path) -> std::string {
-    std::string line;
-    size_t current_line = 0;
-
-    while (std::getline(file, line)) {
-      if (current_line == line_number) {
-        return line;
-      }
-      ++current_line;
-    }
-
-    LOG_ERROR("Line number {} not found in file {}", line_number, path);
-    return "";
+static std::optional<std::string> find_file_path(const std::string& filename) {
+  auto try_open = [](const std::string& path) -> bool {
+    std::ifstream f(path);
+    return f.good();
   };
 
   // 1. Try original path
-  std::ifstream file = try_open(filename);
-  if (file) {
-    return try_read_line(file, filename);
+  if (try_open(filename)) {
+    return filename;
   }
 
   // 2. Try environment variable search
   const char* env = std::getenv("NEXUS_EXTRA_SEARCH_PREFIX");
   if (!env) {
     LOG_ERROR("Cannot open file {} and NEXUS_EXTRA_SEARCH_PREFIX not set", filename);
-    return "";
+    return std::nullopt;
   }
 
   std::string env_str(env);
@@ -83,23 +68,42 @@ static std::string read_line_from_file(const std::string& filename, size_t line_
       std::string base = root.substr(0, root.size() - 1);
       for (const auto& entry : std::filesystem::recursive_directory_iterator(base)) {
         if (entry.is_regular_file() && entry.path().string().ends_with(filename)) {
-          std::ifstream alt_file = try_open(entry.path().string());
-          if (alt_file) {
-            return try_read_line(alt_file, entry.path().string());
+          if (try_open(entry.path().string())) {
+            return entry.path().string();
           }
         }
       }
     } else {
       std::string full_path = root + "/" + filename;
-      std::ifstream alt_file = try_open(full_path);
-      if (alt_file) {
-        return try_read_line(alt_file, full_path);
+      if (try_open(full_path)) {
+        return full_path;
       }
     }
   }
 
-  LOG_ERROR("Cannot open file {} in any of the NEXUS_EXTRA_SEARCH_PREFIX paths",
+  LOG_ERROR("Cannot find file {} in any of the NEXUS_EXTRA_SEARCH_PREFIX paths",
             filename);
+  return std::nullopt;
+}
+
+static std::string read_line_from_file(const std::string& full_path, size_t line_number) {
+  std::ifstream file(full_path);
+  if (!file) {
+    LOG_ERROR("Failed to open file {}", full_path);
+    return "";
+  }
+
+  std::string line;
+  size_t current_line = 0;
+
+  while (std::getline(file, line)) {
+    if (current_line == line_number) {
+      return line;
+    }
+    ++current_line;
+  }
+
+  LOG_ERROR("Line number {} not found in file {}", line_number, full_path);
   return "";
 }
 
@@ -663,11 +667,21 @@ void nexus::write_packets(hsa_queue_t* queue,
                               instruction.end());
 
             line_array.push_back(line - 1);
-            file_array.push_back(filename);
-            hip_array.push_back(read_line_from_file(filename, line - 1));
-            assembly_array.push_back(instruction);
+            auto resolved_path = find_file_path(filename);
+            if (resolved_path) {
+              std::string source_line = read_line_from_file(*resolved_path, line - 1);
+              file_array.push_back(filename);
+              hip_array.push_back(source_line);
+              assembly_array.push_back(instruction);
+              LOG_INFO("{}:{} -> {}", filename, line, instruction);
+            } else {
+              file_array.push_back(filename);
+              hip_array.push_back("");  // Could not find the file
+              assembly_array.push_back(instruction);
 
-            LOG_INFO("{}:{} -> {}", filename, line, instruction);
+              LOG_WARN(
+                  "Could not resolve file path for {} to read line {}", filename, line);
+            }
             cur_offset++;
           }
         }
