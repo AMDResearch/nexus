@@ -1,8 +1,8 @@
-# CC=${ROCM_PATH}/bin/hipcc CXX=${ROCM_PATH}/bin/hipcc 
+# CC=${ROCM_PATH}/bin/hipcc CXX=${ROCM_PATH}/bin/hipcc
 cmake -B build\
     -DCMAKE_PREFIX_PATH=${ROCM_PATH}\
     -DLLVM_INSTALL_DIR=/opt/rocm/llvm\
-    -DCMAKE_BUILD_TYPE=Debug
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 cmake --build build --parallel 16
 

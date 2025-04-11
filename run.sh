@@ -1,11 +1,17 @@
-kernel="vector_add"
-output="vector_add/"
-export HSA_TOOLS_LIB=./build/lib/libnexus.so
-export KERNEL_TO_TRACE=$kernel
-export TRACE_OUTPUT_PATH=$output
-export NEXUS_LOG_LEVEL=3
+kernel="vector_add_thrust"
+kernel="vector_add_template"
+kernel="vector_add_inline"
+# kernel="vector_add"
 
-binary=./test/vector_add
+output="vector_add_inline.json"
+
+echo "output: $output"
+
+export HSA_TOOLS_LIB=./build/lib/libnexus.so
+export NEXUS_OUTPUT_FILE=$output
+export NEXUS_LOG_LEVEL=4
+
+binary=./build/test/$kernel
 # binary=./test/vector_add_template
 
 $binary
