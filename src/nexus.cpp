@@ -568,30 +568,29 @@ void nexus::write_packets(hsa_queue_t* queue,
 
           for (const auto& instruction_obj : inst) {
             auto instruction = instruction_obj.disassembly_;
-            const auto& filename = instruction_obj.file_name_;
+            const auto& filename = kdb_->getFileName(kernel_string.value(), instruction_obj.path_id_);
             std::pair<std::string, uint32_t> line_key = {filename, line};
+
+            instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+            instruction.end());
+            assembly_array.push_back(instruction);
 
             if (seen_lines.count(line_key)) {
               continue;
             }
             seen_lines.insert(line_key);
 
-            instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
-                              instruction.end());
 
-            line_array.push_back(line - 1);
+            line_array.push_back(line);
             auto resolved_path = find_file_path(filename);
             if (resolved_path) {
               std::string source_line = read_line_from_file(*resolved_path, line - 1);
               file_array.push_back(filename);
               hip_array.push_back(source_line);
-              assembly_array.push_back(instruction);
-              LOG_INFO("{}:{} -> {}", filename, line, instruction);
+              LOG_INFO("{}:{} -> {}", filename, line - 1, instruction);
             } else {
               file_array.push_back(filename);
               hip_array.push_back("");  // Could not find the file
-              assembly_array.push_back(instruction);
-
               LOG_WARN(
                   "Could not resolve file path for {} to read line {}", filename, line);
             }
