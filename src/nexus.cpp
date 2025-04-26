@@ -58,6 +58,8 @@ static std::optional<std::string> find_file_path(const std::string& filename) {
   std::string env_str(env);
   std::stringstream ss(env_str);
   std::string root;
+  std::filesystem::path target_path(filename); 
+  std::string target_stem = target_path.stem().string();
 
   while (std::getline(ss, root, ':')) {
     if (root.empty())
@@ -67,16 +69,32 @@ static std::optional<std::string> find_file_path(const std::string& filename) {
       // Recursive search
       std::string base = root.substr(0, root.size() - 1);
       for (const auto& entry : std::filesystem::recursive_directory_iterator(base)) {
-        if (entry.is_regular_file() && entry.path().string().ends_with(filename)) {
-          if (try_open(entry.path().string())) {
-            return entry.path().string();
+        if (entry.is_regular_file()) {
+          const auto& entry_path = entry.path();
+          if (entry_path.filename() == filename || entry_path.stem() == target_stem) {
+            if (try_open(entry_path.string())) {
+              return entry_path.string();
+            }
           }
         }
       }
     } else {
+      // Non-recursive search
       std::string full_path = root + "/" + filename;
       if (try_open(full_path)) {
         return full_path;
+      }
+
+      // Check by stem if full_path didn't succeed
+      for (const auto& entry : std::filesystem::directory_iterator(root)) {
+        if (entry.is_regular_file()) {
+          const auto& entry_path = entry.path();
+          if (entry_path.stem() == target_stem) {
+            if (try_open(entry_path.string())) {
+              return entry_path.string();
+            }
+          }
+        }
       }
     }
   }
