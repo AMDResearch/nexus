@@ -8,7 +8,7 @@ project(Tests LANGUAGES HIP)
 
 set(CMAKE_HIP_STANDARD 17)
 
-set(CMAKE_HIP_FLAGS_RELWITHDEBINFO "-O2 -g -save-temps")
+set(CMAKE_HIP_FLAGS_RELWITHDEBINFO "-O0 -g -save-temps")
 
 add_compile_options($<$<COMPILE_LANGUAGE:HIP>:-g>
                     $<$<COMPILE_LANGUAGE:HIP>:-save-temps>)

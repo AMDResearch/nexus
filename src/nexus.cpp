@@ -562,43 +562,73 @@ void nexus::write_packets(hsa_queue_t* queue,
 
         std::set<std::pair<std::string, uint32_t>> seen_lines;
 
-        for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++) {
-          const auto& line = lines[line_idx];
-          const auto& inst = kdb_->getInstructionsForLine(kernel_string.value(), line);
+        const std::string& kernel_name = kernel_string.value();
 
-          for (const auto& instruction_obj : inst) {
-            auto instruction = instruction_obj.disassembly_;
-            const auto& filename = kdb_->getFileName(kernel_string.value(), instruction_obj.path_id_);
-            std::pair<std::string, uint32_t> line_key = {filename, line};
+        if (!lines.empty()) {
+          // Original path: We have line info
+          for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++) {
+            const auto& line = lines[line_idx];
+            const auto& inst = kdb_->getInstructionsForLine(kernel_name, line);
 
-            instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
-            instruction.end());
-            assembly_array.push_back(instruction);
+            for (const auto& instruction_obj : inst) {
+              auto instruction = instruction_obj.disassembly_;
+              const auto& filename =
+                  kdb_->getFileName(kernel_name, instruction_obj.path_id_);
+              std::pair<std::string, uint32_t> line_key = {filename, line};
 
-            if (seen_lines.count(line_key)) {
-              continue;
+              instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                                instruction.end());
+              assembly_array.push_back(instruction);
+
+              if (seen_lines.count(line_key)) {
+                continue;
+              }
+              seen_lines.insert(line_key);
+
+              line_array.push_back(line);
+              auto resolved_path = find_file_path(filename);
+              if (resolved_path) {
+                std::string source_line = read_line_from_file(*resolved_path, line - 1);
+                file_array.push_back(filename);
+                hip_array.push_back(source_line);
+                LOG_INFO("{}:{} -> {}", filename, line - 1, instruction);
+              } else {
+                file_array.push_back(filename);
+                hip_array.push_back("");  // Could not find the file
+                LOG_WARN(
+                    "Could not resolve file path for {} to read line {}", filename, line);
+              }
+              cur_offset++;
             }
-            seen_lines.insert(line_key);
+          }
+        } else {
+          // Fallback: No line info, just dump all ISA
+          LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                   kernel_name);
 
-
-            line_array.push_back(line);
-            auto resolved_path = find_file_path(filename);
-            if (resolved_path) {
-              std::string source_line = read_line_from_file(*resolved_path, line - 1);
-              file_array.push_back(filename);
-              hip_array.push_back(source_line);
-              LOG_INFO("{}:{} -> {}", filename, line - 1, instruction);
-            } else {
-              file_array.push_back(filename);
-              hip_array.push_back("");  // Could not find the file
-              LOG_WARN(
-                  "Could not resolve file path for {} to read line {}", filename, line);
+          auto& kernel = kdb_->getKernel(kernel_name);
+          LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                   kernel_name);
+          const auto& basic_blocks = kernel.getBasicBlocks();
+          LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                   kernel_name);
+          for (const auto& bb : basic_blocks) {
+            LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                     kernel_name);
+            const auto& isa = bb->getInstructions();
+            LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                     kernel_name);
+            for (const auto& inst : isa) {
+              LOG_WARN("No lines found for kernel: {}, dumping instructions only",
+                       kernel_name);
+              std::string instruction = inst.disassembly_;
+              instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                                instruction.end());
+              assembly_array.push_back(instruction);
+              LOG_INFO("{}", instruction);
             }
-            cur_offset++;
           }
         }
-
-        const std::string& kernel_name = kernel_string.value();
 
         json_["kernels"][kernel_name]["lines"] = std::move(line_array);
         json_["kernels"][kernel_name]["files"] = std::move(file_array);

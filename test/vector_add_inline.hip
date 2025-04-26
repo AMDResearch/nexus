@@ -5,7 +5,7 @@
 
 #define N 1024  // Number of elements
 
-constexpr auto inline do_math(const float a, const float b){
+constexpr auto inline do_math(const float a, const float b) {
   const auto v0 = a + b;
   const auto v1 = v0 * a;
   const auto v2 = pow(v0, 2) * a * a;
@@ -18,7 +18,8 @@ __global__ void vector_add(const float* a, const float* b, float* c, int n)
 {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < n) {
-    c[idx] = do_math(a[idx], b[idx]);
+    auto result = do_math(a[idx], b[idx]);
+    c[idx] = result;
   }
 }
 
