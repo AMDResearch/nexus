@@ -328,9 +328,19 @@ std::optional<std::string> nexus::is_traceable_packet(
 
       if (kernel_to_trace == nullptr) {
         return kernel_name;
-      } else if (kernel_name.contains(kernel_to_trace)) {
-        LOG_INFO("Found the target kernel {}", kernel_name);
-        return kernel_name;
+      } else {
+        std::string_view kernels(kernel_to_trace);
+        size_t start = 0;
+        while (start < kernels.size()) {
+          size_t end = kernels.find(';', start);
+          if (end == std::string_view::npos) end = kernels.size();
+          auto token = kernels.substr(start, end - start);
+          if (kernel_name.contains(token)) {
+            LOG_INFO("Found the target kernel {}", kernel_name);
+            return kernel_name;
+          }
+          start = end + 1;
+        }
       }
     }
   }
@@ -625,20 +635,10 @@ void nexus::write_packets(hsa_queue_t* queue,
                    kernel_name);
 
           auto& kernel = kdb_->getKernel(kernel_name);
-          LOG_WARN("No lines found for kernel: {}, dumping instructions only",
-                   kernel_name);
           const auto& basic_blocks = kernel.getBasicBlocks();
-          LOG_WARN("No lines found for kernel: {}, dumping instructions only",
-                   kernel_name);
           for (const auto& bb : basic_blocks) {
-            LOG_WARN("No lines found for kernel: {}, dumping instructions only",
-                     kernel_name);
             const auto& isa = bb->getInstructions();
-            LOG_WARN("No lines found for kernel: {}, dumping instructions only",
-                     kernel_name);
             for (const auto& inst : isa) {
-              LOG_WARN("No lines found for kernel: {}, dumping instructions only",
-                       kernel_name);
               std::string instruction = inst.disassembly_;
               instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
                                 instruction.end());
