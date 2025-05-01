@@ -1,18 +1,18 @@
 /****************************************************************************
  * MIT License
- * 
+ *
  * Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  ****************************************************************************/
-
 
 #define __HIP_PLATFORM_AMD__
 
@@ -82,7 +81,7 @@ static std::optional<std::string> find_file_path(const std::string& filename) {
   std::string env_str(env);
   std::stringstream ss(env_str);
   std::string root;
-  std::filesystem::path target_path(filename); 
+  std::filesystem::path target_path(filename);
   std::string target_stem = target_path.stem().string();
 
   while (std::getline(ss, root, ':')) {
@@ -357,7 +356,9 @@ std::optional<std::string> nexus::is_traceable_packet(
         size_t start = 0;
         while (start < kernels.size()) {
           size_t end = kernels.find(';', start);
-          if (end == std::string_view::npos) end = kernels.size();
+          if (end == std::string_view::npos) {
+            end = kernels.size();
+          }
           auto token = kernels.substr(start, end - start);
           if (kernel_name.contains(token)) {
             LOG_INFO("Found the target kernel {}", kernel_name);
@@ -657,6 +658,15 @@ void nexus::write_packets(hsa_queue_t* queue,
           // Fallback: No line info, just dump all ISA
           LOG_WARN("No lines found for kernel: {}, dumping instructions only",
                    kernel_name);
+
+          std::vector<std::string> kernels;
+          kdb_->getKernels(kernels);
+          // search if the kernel_name is in the list of kernels
+          auto it = std::find(kernels.begin(), kernels.end(), kernel_name);
+          if (it == kernels.end()) {
+            LOG_ERROR("Kernel not found in the list of kernels: {}", kernel_name);
+            return;
+          }
 
           auto& kernel = kdb_->getKernel(kernel_name);
           const auto& basic_blocks = kernel.getBasicBlocks();
