@@ -271,7 +271,6 @@ void nexus::dump_all_code_objects() {
       std::ofstream file(json_path);
       if (file) {
         file << json.dump(4);
-        LOG_DETAIL("Dumped kernel data to: {}", json_path.string());
       } else {
         LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
       }
