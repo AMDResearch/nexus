@@ -243,34 +243,41 @@ void nexus::dump_all_code_objects() {
   nlohmann::json assembly_array = nlohmann::json::array();
   nlohmann::json json;
   for (const auto& kernel_name : kernels) {
-    const auto& kernel = kdb_->getKernel(kernel_name);
-    const auto& basic_blocks = kernel.getBasicBlocks();
-    for (const auto& block : basic_blocks) {
-      const auto& instructions = block->getInstructions();
-      for (const auto& inst : instructions) {
-        auto instruction = inst.disassembly_;
-        instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
-                          instruction.end());
-        assembly_array.push_back(instruction);
+    try {
+      if (kernel_name == ".text") {
+        continue;
       }
+      const auto& kernel = kdb_->getKernel(kernel_name);
+      const auto& basic_blocks = kernel.getBasicBlocks();
+      for (const auto& block : basic_blocks) {
+        const auto& instructions = block->getInstructions();
+        for (const auto& inst : instructions) {
+          auto instruction = inst.disassembly_;
+          instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                            instruction.end());
+          assembly_array.push_back(instruction);
+        }
+      }
+      json["kernels"][kernel_name]["assembly"] = std::move(assembly_array);
+      json["kernels"][kernel_name]["signature"] = kernel_name;
+    } catch (const std::exception& e) {
+      LOG_ERROR("Error dumping kernel {}", kernel_name);
+      LOG_ERROR("{}", e.what());
     }
 
-    json["kernels"][kernel_name]["assembly"] = std::move(assembly_array);
-    json["kernels"][kernel_name]["signature"] = kernel_name;
-  }
-
-  const char* full_trace_path = std::getenv("NEXUS_KERNELS_DUMP_FILE");
-  if (full_trace_path) {
-    std::filesystem::path json_path = full_trace_path;
-    std::ofstream file(json_path);
-    if (file) {
-      file << json.dump(4);
-      LOG_DETAIL("Dumped kernel data to: {}", json_path.string());
+    const char* full_trace_path = std::getenv("NEXUS_KERNELS_DUMP_FILE");
+    if (full_trace_path) {
+      std::filesystem::path json_path = full_trace_path;
+      std::ofstream file(json_path);
+      if (file) {
+        file << json.dump(4);
+        LOG_DETAIL("Dumped kernel data to: {}", json_path.string());
+      } else {
+        LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
+      }
     } else {
-      LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
+      LOG_DETAIL("NEXUS_KERNELS_DUMP_FILE is not set, not dumping kernels");
     }
-  } else {
-    LOG_DETAIL("NEXUS_KERNELS_DUMP_FILE is not set, not dumping kernels");
   }
 }
 
@@ -500,6 +507,18 @@ static std::optional<std::string> find_mmap_file_from_ptr(const void* ptr) {
   return {};
 }
 
+std::string hash_memory(const char* data, size_t size) {
+  std::hash<std::string> hash_fn;
+  size_t bytes_to_hash = std::min(static_cast<size_t>(512), size);
+  std::string buffer(data, bytes_to_hash);
+  size_t hash_value = hash_fn(buffer);
+
+  // Convert the hash value to a hex string
+  std::stringstream ss;
+  ss << std::hex << std::setw(16) << std::setfill('0') << hash_value;
+  return ss.str();
+}
+
 hsa_status_t nexus::hsa_code_object_reader_create_from_memory(
     const void* code_object,
     size_t size,
@@ -529,10 +548,17 @@ hsa_status_t nexus::hsa_code_object_reader_create_from_memory(
     } else {
       LOG_DETAIL(
           "Failed to find the file name for the code object. Dumping to temp file.");
-      const auto tmp = std::filesystem::temp_directory_path() / "code_object.bin";
+
+      std::string hash_str =
+          hash_memory(reinterpret_cast<const char*>(code_object), size);
+
+      const auto tmp = std::filesystem::temp_directory_path() /
+                       ("nexus_code_object_" + hash_str + ".hsaco");
+
       std::ofstream temp_file_stream(tmp, std::ios::binary);
       temp_file_stream.write(reinterpret_cast<const char*>(code_object), size);
       temp_file_stream.close();
+      LOG_DETAIL("Adding the code object {}", tmp.string());
       instance->kdb_->addFile(tmp, instance->gpu_agent_.agent, "");
     }
   }
@@ -750,7 +776,7 @@ void nexus::write_packets(hsa_queue_t* queue,
               instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
                                 instruction.end());
               assembly_array.push_back(instruction);
-              LOG_INFO("{}", instruction);
+              LOG_DETAIL("{}", instruction);
             }
           }
         }
