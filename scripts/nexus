@@ -27,16 +27,17 @@
 # Default values
 LOG_LEVEL=0
 OUTPUT_FILE="result.json"
+FULL_TRACE_DUMP_FILE="full_trace.json"
 EXTRA_SEARCH_PREFIX=""
 APP_COMMAND=()
 
 # Print usage
 usage() {
-  echo "Usage: $0 [--log-level <0-4>] [--output <file>] [--search-prefix <prefixes>] <command...>"
-  echo "Short options: -l, -o, -s, -h"
+  echo "Usage: $0 [-v[v[v[v]]]] [--output <file>] [--search-prefix <prefixes>] <command...>"
+  echo "Short options: -v, -o, -s, -h"
   echo ""
   echo "Examples:"
-  echo "  $0 -l 2 -o out.json -s './test' ./vector_add"
+  echo "  $0 -vv -o out.json -s './test' ./vector_add"
   echo "  $0 python test/add.py"
   exit 1
 }
@@ -44,9 +45,9 @@ usage() {
 # Parse options
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --log-level|-l)
-      LOG_LEVEL="$2"
-      shift 2
+    -v*)
+      LOG_LEVEL=${#1}
+      shift
       ;;
     --output|-o)
       OUTPUT_FILE="$2"
@@ -54,6 +55,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --search-prefix|-s)
       EXTRA_SEARCH_PREFIX="$2"
+      shift 2
+      ;;
+    --full-trace-dump-file|-f)
+      FULL_TRACE_DUMP_FILE="$2"
       shift 2
       ;;
     --help|-h)
@@ -81,6 +86,7 @@ NEXUS_LIB_PATH="${SCRIPT_DIR}/../build/lib/libnexus.so"
 export HSA_TOOLS_LIB="${NEXUS_LIB_PATH}"
 export NEXUS_LOG_LEVEL="$LOG_LEVEL"
 export NEXUS_OUTPUT_FILE="$OUTPUT_FILE"
+export NEXUS_KERNELS_DUMP_FILE="$FULL_TRACE_DUMP_FILE"
 
 if [ -n "$EXTRA_SEARCH_PREFIX" ]; then
   export NEXUS_EXTRA_SEARCH_PREFIX="$EXTRA_SEARCH_PREFIX"

@@ -231,6 +231,66 @@ void nexus::discover_agents() {
   hsa_core_call(this, hsa_iterate_agents, agent_callback, &agents_names_);
 }
 
+void nexus::dump_all_code_objects(const std::filesystem::path& json_path) {
+  LOG_DETAIL("Dumping all code objects");
+
+  std::vector<std::string> kernels;
+  kdb_->getKernels(kernels);
+  LOG_DETAIL("Dumping {} kernels", kernels.size());
+  nlohmann::json file_array = nlohmann::json::array();
+  nlohmann::json hip_array = nlohmann::json::array();
+  nlohmann::json assembly_array = nlohmann::json::array();
+  nlohmann::json json;
+  for (const auto& kernel_name : kernels) {
+    try {
+      if (kernel_name == ".text") {
+        continue;
+      }
+      const auto& kernel = kdb_->getKernel(kernel_name);
+      const auto& basic_blocks = kernel.getBasicBlocks();
+      for (const auto& block : basic_blocks) {
+        const auto& instructions = block->getInstructions();
+        for (const auto& inst : instructions) {
+          auto instruction = inst.disassembly_;
+          instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                            instruction.end());
+          assembly_array.push_back(instruction);
+        }
+      }
+      json["kernels"][kernel_name]["assembly"] = std::move(assembly_array);
+      json["kernels"][kernel_name]["signature"] = kernel_name;
+    } catch (const std::exception& e) {
+      LOG_ERROR("Error dumping kernel {}", kernel_name);
+      LOG_ERROR("{}", e.what());
+    }
+
+    if (full_trace_path) {
+      std::filesystem::path json_path = full_trace_path;
+      std::ofstream file(json_path);
+      if (file) {
+        file << json.dump(4);
+      } else {
+        LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
+      }
+    } else {
+      LOG_DETAIL("NEXUS_KERNELS_DUMP_FILE is not set, not dumping kernels");
+    }
+  }
+}
+
+hsa_status_t nexus::hsa_shut_down() {
+  LOG_DETAIL("Shutting down HSA");
+  auto instance = get_instance();
+
+  const char* full_trace_path = std::getenv("NEXUS_KERNELS_DUMP_FILE");
+  if (full_trace_path) {
+    const std::filesystem::path json_path(full_trace_path);
+    instance->dump_all_code_objects(json_path);
+  }
+
+  return hsa_core_call(instance, hsa_shut_down);
+}
+
 std::string demangle_name(const char* mangled_name) {
   int status = 0;
   std::unique_ptr<char, void (*)(void*)> result(
@@ -433,11 +493,32 @@ static std::optional<std::string> find_mmap_file_from_ptr(const void* ptr) {
       std::getline(iss, path);
       path.erase(0, path.find_first_not_of(" \t"));
 
+      if (path == "[heap]") {
+        return {};
+      }
+
+      // if (path.empty()) {
+      //   return {};
+      // }
+
+      // return path;
       return path.empty() ? "[anonymous mapping]" : path;
     }
   }
 
   return {};
+}
+
+std::string hash_memory(const char* data, size_t size) {
+  std::hash<std::string> hash_fn;
+  size_t bytes_to_hash = std::min(static_cast<size_t>(512), size);
+  std::string buffer(data, bytes_to_hash);
+  size_t hash_value = hash_fn(buffer);
+
+  // Convert the hash value to a hex string
+  std::stringstream ss;
+  ss << std::hex << std::setw(16) << std::setfill('0') << hash_value;
+  return ss.str();
 }
 
 hsa_status_t nexus::hsa_code_object_reader_create_from_memory(
@@ -463,9 +544,27 @@ hsa_status_t nexus::hsa_code_object_reader_create_from_memory(
               size);
   }
 
-  if (instance->kdb_ && filename.has_value()) {
-    instance->kdb_->addFile(filename.value(), instance->gpu_agent_.agent, "");
+  if (instance->kdb_) {
+    if (filename.has_value()) {
+      instance->kdb_->addFile(filename.value(), instance->gpu_agent_.agent, "");
+    } else {
+      LOG_DETAIL(
+          "Failed to find the file name for the code object. Dumping to temp file.");
+
+      std::string hash_str =
+          hash_memory(reinterpret_cast<const char*>(code_object), size);
+
+      const auto tmp = std::filesystem::temp_directory_path() /
+                       ("nexus_code_object_" + hash_str + ".hsaco");
+
+      std::ofstream temp_file_stream(tmp, std::ios::binary);
+      temp_file_stream.write(reinterpret_cast<const char*>(code_object), size);
+      temp_file_stream.close();
+      LOG_DETAIL("Adding the code object {}", tmp.string());
+      instance->kdb_->addFile(tmp, instance->gpu_agent_.agent, "");
+    }
   }
+
   return result;
 }
 
@@ -548,6 +647,8 @@ void nexus::hook_api() {
 
   api_table_->core_->hsa_executable_symbol_get_info_fn =
       nexus::hsa_executable_symbol_get_info;
+
+  api_table_->core_->hsa_shut_down_fn = nexus::hsa_shut_down;
 }
 
 hsa_status_t nexus::add_queue(hsa_queue_t* queue, hsa_agent_t agent) {
@@ -677,7 +778,7 @@ void nexus::write_packets(hsa_queue_t* queue,
               instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
                                 instruction.end());
               assembly_array.push_back(instruction);
-              LOG_INFO("{}", instruction);
+              LOG_DETAIL("{}", instruction);
             }
           }
         }

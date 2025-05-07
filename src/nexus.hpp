@@ -1,18 +1,18 @@
 /****************************************************************************
  * MIT License
- * 
+ *
  * Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -251,6 +251,8 @@ class nexus {
   std::optional<std::string> is_traceable_packet(
       const hsa_ext_amd_aql_pm4_packet_t* packet);
   void send_message_and_wait(void* args);
+
+  void dump_all_code_objects(const std::filesystem::path& path);
   static hsa_status_t hsa_queue_create(hsa_agent_t agent,
                                        uint32_t size,
                                        hsa_queue_type32_t type,
@@ -283,6 +285,8 @@ class nexus {
       hsa_executable_symbol_t executable_symbol,
       hsa_executable_symbol_info_t attribute,
       void* value);
+
+  static hsa_status_t hsa_shut_down();
 
   using packet_word_t = uint32_t;
 
