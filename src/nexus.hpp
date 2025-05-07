@@ -252,7 +252,7 @@ class nexus {
       const hsa_ext_amd_aql_pm4_packet_t* packet);
   void send_message_and_wait(void* args);
 
-  void dump_all_code_objects();
+  void dump_all_code_objects(const std::filesystem::path& path);
   static hsa_status_t hsa_queue_create(hsa_agent_t agent,
                                        uint32_t size,
                                        hsa_queue_type32_t type,

@@ -231,13 +231,12 @@ void nexus::discover_agents() {
   hsa_core_call(this, hsa_iterate_agents, agent_callback, &agents_names_);
 }
 
-void nexus::dump_all_code_objects() {
+void nexus::dump_all_code_objects(const std::filesystem::path& json_path) {
   LOG_DETAIL("Dumping all code objects");
 
   std::vector<std::string> kernels;
   kdb_->getKernels(kernels);
   LOG_DETAIL("Dumping {} kernels", kernels.size());
-  // json-file
   nlohmann::json file_array = nlohmann::json::array();
   nlohmann::json hip_array = nlohmann::json::array();
   nlohmann::json assembly_array = nlohmann::json::array();
@@ -265,7 +264,6 @@ void nexus::dump_all_code_objects() {
       LOG_ERROR("{}", e.what());
     }
 
-    const char* full_trace_path = std::getenv("NEXUS_KERNELS_DUMP_FILE");
     if (full_trace_path) {
       std::filesystem::path json_path = full_trace_path;
       std::ofstream file(json_path);
@@ -283,7 +281,12 @@ void nexus::dump_all_code_objects() {
 hsa_status_t nexus::hsa_shut_down() {
   LOG_DETAIL("Shutting down HSA");
   auto instance = get_instance();
-  instance->dump_all_code_objects();
+
+  const char* full_trace_path = std::getenv("NEXUS_KERNELS_DUMP_FILE");
+  if (full_trace_path) {
+    const std::filesystem::path json_path(full_trace_path);
+    instance->dump_all_code_objects(json_path);
+  }
 
   return hsa_core_call(instance, hsa_shut_down);
 }
