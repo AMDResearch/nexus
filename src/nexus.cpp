@@ -264,16 +264,11 @@ void nexus::dump_all_code_objects(const std::filesystem::path& json_path) {
       LOG_ERROR("{}", e.what());
     }
 
-    if (full_trace_path) {
-      std::filesystem::path json_path = full_trace_path;
-      std::ofstream file(json_path);
-      if (file) {
-        file << json.dump(4);
-      } else {
-        LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
-      }
+    std::ofstream file(json_path);
+    if (file) {
+      file << json.dump(4);
     } else {
-      LOG_DETAIL("NEXUS_KERNELS_DUMP_FILE is not set, not dumping kernels");
+      LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
     }
   }
 }
