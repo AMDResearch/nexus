@@ -643,7 +643,10 @@ void nexus::hook_api() {
   api_table_->core_->hsa_executable_symbol_get_info_fn =
       nexus::hsa_executable_symbol_get_info;
 
-  api_table_->core_->hsa_shut_down_fn = nexus::hsa_shut_down;
+  // Intercepting the hsa_shut_down function causes a crash at the end
+  // For now, we are not going to intercept it and we will dump the trace
+  // every time we see a new kernel
+  // api_table_->core_->hsa_shut_down_fn = nexus::hsa_shut_down;
 }
 
 hsa_status_t nexus::add_queue(hsa_queue_t* queue, hsa_agent_t agent) {

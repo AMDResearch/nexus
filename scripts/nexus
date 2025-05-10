@@ -1,19 +1,19 @@
 #!/bin/bash
 ################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,14 +27,15 @@
 # Default values
 LOG_LEVEL=0
 OUTPUT_FILE="result.json"
-FULL_TRACE_DUMP_FILE="full_trace.json"
+FULL_TRACE_DUMP_FILE=""
 EXTRA_SEARCH_PREFIX=""
+GDB=false
 APP_COMMAND=()
 
 # Print usage
 usage() {
-  echo "Usage: $0 [-v[v[v[v]]]] [--output <file>] [--search-prefix <prefixes>] <command...>"
-  echo "Short options: -v, -o, -s, -h"
+  echo "Usage: $0 [-v[v[v[v]]]] [--output <file>] [--search-prefix <prefixes>] [--gdb] <command...>"
+  echo "Short options: -v, -o, -s, -g, -h"
   echo ""
   echo "Examples:"
   echo "  $0 -vv -o out.json -s './test' ./vector_add"
@@ -64,6 +65,10 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       usage
       ;;
+    --gdb|-g)
+      GDB=true
+      shift
+      ;;
     --*|-*)
       echo "Unknown option: $1"
       usage
@@ -86,11 +91,20 @@ NEXUS_LIB_PATH="${SCRIPT_DIR}/../build/lib/libnexus.so"
 export HSA_TOOLS_LIB="${NEXUS_LIB_PATH}"
 export NEXUS_LOG_LEVEL="$LOG_LEVEL"
 export NEXUS_OUTPUT_FILE="$OUTPUT_FILE"
-export NEXUS_KERNELS_DUMP_FILE="$FULL_TRACE_DUMP_FILE"
+
+if [ -n "$FULL_TRACE_DUMP_FILE" ]; then
+  echo "Dumping full trace to $FULL_TRACE_DUMP_FILE"
+  export NEXUS_KERNELS_DUMP_FILE="$FULL_TRACE_DUMP_FILE"
+fi
 
 if [ -n "$EXTRA_SEARCH_PREFIX" ]; then
+  echo "Setting extra search prefix to $EXTRA_SEARCH_PREFIX"
   export NEXUS_EXTRA_SEARCH_PREFIX="$EXTRA_SEARCH_PREFIX"
 fi
 
 echo "Running: ${APP_COMMAND[*]}"
-exec "${APP_COMMAND[@]}"
+if [ "$GDB" = true ]; then
+  gdb -ex run --args "${APP_COMMAND[@]}"
+else
+  exec "${APP_COMMAND[@]}"
+fi
