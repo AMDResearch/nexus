@@ -672,6 +672,43 @@ void nexus::on_submit_packet(const void* in_packets,
   }
 }
 
+nlohmann::json nexus::get_all_isa(const std::string& kernel_name) {
+  nlohmann::json assembly_array = nlohmann::json::array();
+
+  std::vector<std::string> kernels;
+  kdb_->getKernels(kernels);
+  // search if the kernel_name is in the list of kernels
+  auto it = std::find(kernels.begin(), kernels.end(), kernel_name);
+  if (it == kernels.end()) {
+    LOG_ERROR("Kernel not found in the list of kernels: {}", kernel_name);
+    return assembly_array;
+  }
+
+  auto& kernel = kdb_->getKernel(kernel_name);
+  const auto& basic_blocks = kernel.getBasicBlocks();
+  for (const auto& bb : basic_blocks) {
+    const auto& isa = bb->getInstructions();
+    for (const auto& inst : isa) {
+      std::string instruction = inst.disassembly_;
+      instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
+                        instruction.end());
+      assembly_array.push_back(instruction);
+      LOG_DETAIL("{}", instruction);
+    }
+  }
+
+  return assembly_array;
+}
+void nexus::dump_intercepted_packets(const std::filesystem::path& json_path) {
+  std::ofstream file(json_path);
+  if (file) {
+    file << json_.dump(4);
+    LOG_DETAIL("Dumped kernel data to: {}", json_path.string());
+  } else {
+    LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
+  }
+}
+
 void nexus::write_packets(hsa_queue_t* queue,
                           const hsa_ext_amd_aql_pm4_packet_t* packet,
                           uint64_t count,
@@ -710,27 +747,20 @@ void nexus::write_packets(hsa_queue_t* queue,
         nlohmann::json line_array = nlohmann::json::array();
         nlohmann::json file_array = nlohmann::json::array();
         nlohmann::json hip_array = nlohmann::json::array();
-        nlohmann::json assembly_array = nlohmann::json::array();
 
         std::set<std::pair<std::string, uint32_t>> seen_lines;
 
         const std::string& kernel_name = kernel_string.value();
 
         if (!lines.empty()) {
-          // Original path: We have line info
           for (std::size_t line_idx = 0; line_idx < lines.size(); line_idx++) {
             const auto& line = lines[line_idx];
             const auto& inst = kdb_->getInstructionsForLine(kernel_name, line);
 
             for (const auto& instruction_obj : inst) {
-              auto instruction = instruction_obj.disassembly_;
               const auto& filename =
                   kdb_->getFileName(kernel_name, instruction_obj.path_id_);
               std::pair<std::string, uint32_t> line_key = {filename, line};
-
-              instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
-                                instruction.end());
-              assembly_array.push_back(instruction);
 
               if (seen_lines.count(line_key)) {
                 continue;
@@ -743,7 +773,7 @@ void nexus::write_packets(hsa_queue_t* queue,
                 std::string source_line = read_line_from_file(*resolved_path, line - 1);
                 file_array.push_back(filename);
                 hip_array.push_back(source_line);
-                LOG_INFO("{}:{} -> {}", filename, line - 1, instruction);
+                LOG_INFO("{}:{}", filename, line - 1);
               } else {
                 file_array.push_back(filename);
                 hip_array.push_back("");  // Could not find the file
@@ -754,32 +784,11 @@ void nexus::write_packets(hsa_queue_t* queue,
             }
           }
         } else {
-          // Fallback: No line info, just dump all ISA
           LOG_WARN("No lines found for kernel: {}, dumping instructions only",
                    kernel_name);
-
-          std::vector<std::string> kernels;
-          kdb_->getKernels(kernels);
-          // search if the kernel_name is in the list of kernels
-          auto it = std::find(kernels.begin(), kernels.end(), kernel_name);
-          if (it == kernels.end()) {
-            LOG_ERROR("Kernel not found in the list of kernels: {}", kernel_name);
-            return;
-          }
-
-          auto& kernel = kdb_->getKernel(kernel_name);
-          const auto& basic_blocks = kernel.getBasicBlocks();
-          for (const auto& bb : basic_blocks) {
-            const auto& isa = bb->getInstructions();
-            for (const auto& inst : isa) {
-              std::string instruction = inst.disassembly_;
-              instruction.erase(std::remove(instruction.begin(), instruction.end(), '\t'),
-                                instruction.end());
-              assembly_array.push_back(instruction);
-              LOG_DETAIL("{}", instruction);
-            }
-          }
         }
+
+        nlohmann::json assembly_array = get_all_isa(kernel_name);
 
         json_["kernels"][kernel_name]["lines"] = std::move(line_array);
         json_["kernels"][kernel_name]["files"] = std::move(file_array);
@@ -789,13 +798,7 @@ void nexus::write_packets(hsa_queue_t* queue,
 
         std::filesystem::path json_path = env_trace_path;
 
-        std::ofstream file(json_path);
-        if (file) {
-          file << json_.dump(4);
-          LOG_DETAIL("Dumped kernel data to: {}", json_path.string());
-        } else {
-          LOG_DETAIL("Failed to write JSON to: {}", json_path.string());
-        }
+        dump_intercepted_packets(json_path);
 
         LOG_DETAIL("Processed kernel: {}", kernel_name);
       }

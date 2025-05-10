@@ -253,6 +253,8 @@ class nexus {
   void send_message_and_wait(void* args);
 
   void dump_all_code_objects(const std::filesystem::path& path);
+  void dump_intercepted_packets(const std::filesystem::path& path);
+  nlohmann::json get_all_isa(const std::string& kernel_name);
   static hsa_status_t hsa_queue_create(hsa_agent_t agent,
                                        uint32_t size,
                                        hsa_queue_type32_t type,
