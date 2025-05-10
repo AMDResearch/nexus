@@ -26,7 +26,7 @@
 
 # Default values
 LOG_LEVEL=0
-OUTPUT_FILE="result.json"
+OUTPUT_FILE=""
 FULL_TRACE_DUMP_FILE=""
 EXTRA_SEARCH_PREFIX=""
 GDB=false
@@ -90,7 +90,15 @@ NEXUS_LIB_PATH="${SCRIPT_DIR}/../build/lib/libnexus.so"
 
 export HSA_TOOLS_LIB="${NEXUS_LIB_PATH}"
 export NEXUS_LOG_LEVEL="$LOG_LEVEL"
-export NEXUS_OUTPUT_FILE="$OUTPUT_FILE"
+
+if [ -n "$OUTPUT_FILE" ]; then
+  export NEXUS_OUTPUT_FILE="$OUTPUT_FILE"
+else
+  # Find the stem of the APP_COMMAND first argument
+filename="${APP_COMMAND[0]}"
+  stem="$(basename "$filename" .${filename##*.})"
+  export NEXUS_OUTPUT_FILE="${stem}.json"
+fi
 
 if [ -n "$FULL_TRACE_DUMP_FILE" ]; then
   echo "Dumping full trace to $FULL_TRACE_DUMP_FILE"
