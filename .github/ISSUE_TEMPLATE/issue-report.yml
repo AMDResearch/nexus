@@ -1,0 +1,79 @@
+name: Issue Report
+description: File a report for ROCm related issues on Linux and Windows. For issues pertaining to documentation or non-bug related, please open a blank issue located below.
+title: "[Issue]: "
+
+body:
+- type: markdown
+  attributes:
+    value: |
+      Thank you for taking the time to fill out this report!
+
+      You can acquire your OS, CPU, GPU (for filling out this report) with the following commands:
+
+      Linux:
+      ```
+        echo "OS:" && cat /etc/os-release | grep -E "^(NAME=|VERSION=)";
+        echo "CPU: " && cat /proc/cpuinfo | grep "model name" | sort --unique;
+        echo "GPU:" && /opt/rocm/bin/rocminfo | grep -E "^\s*(Name|Marketing Name)";
+      ```
+        
+      Windows:
+      ```
+        (Get-WmiObject Win32_OperatingSystem).Version
+        (Get-WmiObject win32_Processor).Name
+        (Get-WmiObject win32_VideoController).Name
+      ```
+- type: textarea
+  attributes:
+    label: Problem Description
+    description: Describe the issue you encountered.
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Operating System
+    description: What is the name and version number of the OS?
+    placeholder: "e.g. Ubuntu 22.04.3 LTS (Jammy Jellyfish)"
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: CPU
+    description: What CPU did you encounter the issue on?
+    placeholder: "e.g. AMD Ryzen 9 5900HX with Radeon Graphics"
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: GPU
+    description: What GPU(s) did you encounter the issue on?
+    placeholder: "e.g. AMD Instinct MI300X"
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: ROCm Version
+    description: What version(s) of ROCm did you encounter the issue on?
+    placeholder: "e.g. ROCm 6.3.1"
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to Reproduce
+    description: (Optional) Detailed steps to reproduce the issue.
+  validations:
+    required: false
+    
+- type: textarea
+  attributes:
+    label: (Optional for Linux users) Output of /opt/rocm/bin/rocminfo --support
+    description: The output of rocminfo --support could help to better address the problem.
+  validations:
+    required: false
+
+- type: textarea
+  attributes:
+    label: Additional Information
+    description: (Optional) Any additional information that is relevant, e.g. relevant environment variables, dockerfiles, log files, dmesg output (on Linux), etc.
+  validations:
+    required: false
