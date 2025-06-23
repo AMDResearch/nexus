@@ -24,6 +24,10 @@ SOFTWARE.
 
 # Nexus: HSA Packet Source Code Extractor
 
+> [!IMPORTANT]  
+> This project is intended for research purposes only and is provided by AMD Research and Advanced Development team. 
+This is not a product. Use it at your own risk and discretion.
+> 
 Nexus is a custom tool that intercepts Heterogeneous System Architecture (HSA) packets, extracts the source code from them, and outputs it to a JSON file containing the assembly and the HIP code.
 
 
