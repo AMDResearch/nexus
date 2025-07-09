@@ -110,6 +110,10 @@ if [ -n "$EXTRA_SEARCH_PREFIX" ]; then
   export NEXUS_EXTRA_SEARCH_PREFIX="$EXTRA_SEARCH_PREFIX"
 fi
 
+# Triton Environment Variables
+export TRITON_ALWAYS_COMPILE=1
+export TRITON_DISABLE_LINE_INFO=0
+
 echo "Running: ${APP_COMMAND[*]}"
 if [ "$GDB" = true ]; then
   gdb -ex run --args "${APP_COMMAND[@]}"
