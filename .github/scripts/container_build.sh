@@ -16,15 +16,12 @@ apptainer_can_build() {
     unshare --user --map-root-user true 2>/dev/null
 }
 
-# CONTAINER_RUNTIME forces a runtime. This matters when apptainer is installed
-# but cannot build: on a host with kernel.apparmor_restrict_unprivileged_userns=1,
-# no setuid starter and no /etc/subuid entry, `apptainer build` fails in %post
-# while docker works. Autodetection alone would pick apptainer and fail there.
-# Apptainer is disabled for now: the CI hosts either cannot build with it
-# (no setuid starter, no usable user namespace) or do not have it at all,
-# and the runner has no root to install it. Remove this line to restore
-# autodetection.
-CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
+# CONTAINER_RUNTIME forces a runtime, and is only honoured when the caller sets
+# it. It used to be defaulted to "docker" here, which made the branch below
+# always take the "forced" path and left the autodetection underneath it
+# unreachable -- on a runner without docker every build died at
+# "CONTAINER_RUNTIME=docker but it is not installed" instead of falling back to
+# apptainer. Leave it unset so apptainer_can_build() actually gets to decide.
 
 if [ -n "$CONTAINER_RUNTIME" ]; then
     if ! command -v "$CONTAINER_RUNTIME" &> /dev/null; then
@@ -52,9 +49,12 @@ else
 fi
 
 if [ "$CONTAINER_RUNTIME" = "apptainer" ]; then
-    DEF_FILE="apptainer/intellikit.def"
-    IMAGE_FILE=~/apptainer/intellikit-dev.sif
-    HASH_FILE=~/apptainer/intellikit.def.sha256
+    # APPTAINER_DEF mirrors DOCKERFILE below: it selects the ROCm version, so the
+    # apptainer leg can follow the same matrix rather than being pinned to ROCm 7.
+    DEF_FILE="${APPTAINER_DEF:-apptainer/intellikit.def}"
+    IMAGE_NAME="${APPTAINER_IMAGE_NAME:-intellikit-dev}"
+    IMAGE_FILE=~/apptainer/${IMAGE_NAME}.sif
+    HASH_FILE=~/apptainer/${IMAGE_NAME}.def.sha256
 
     mkdir -p ~/apptainer
     CURRENT_HASH=$(sha256sum "$DEF_FILE" | awk '{print $1}')
