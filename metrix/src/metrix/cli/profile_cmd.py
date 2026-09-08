@@ -84,6 +84,12 @@ def profile_command(args):
                 )
             metrics_to_compute = [m for m in metrics_to_compute if m not in unsupported]
 
+    if not metrics_to_compute and not args.time_only:
+        logger.warning(
+            f"No metrics available on {backend.device_specs.arch} "
+            f"for the requested profile/metrics. Running in time-only mode."
+        )
+
     # Explicitly requested metrics that this architecture simply does not define.
     # Without this the name reaches get_required_counters() and surfaces as a
     # traceback rather than a message naming the architecture.
