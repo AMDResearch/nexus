@@ -25,12 +25,12 @@ apptainer_can_build() {
     unshare --user --map-root-user true 2>/dev/null
 }
 
-# See container_build.sh for why an explicit override exists.
-# Apptainer is disabled for now: the CI hosts either cannot build with it
-# (no setuid starter, no usable user namespace) or do not have it at all,
-# and the runner has no root to install it. Remove this line to restore
-# autodetection.
-CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
+# See container_build.sh: CONTAINER_RUNTIME is honoured only when the caller sets
+# it. Defaulting it here had the same effect it had there -- the branch below is
+# `if [ -n "$CONTAINER_RUNTIME" ]`, so a default made every run take the "forced"
+# path and left the autodetection beneath it unreachable. This file is the twin of
+# container_build.sh and has to move with it: with only the build side fixed, the
+# image built under apptainer and then every exec step still died demanding docker.
 
 if [ -n "$CONTAINER_RUNTIME" ]; then
     if ! command -v "$CONTAINER_RUNTIME" &> /dev/null; then
@@ -58,7 +58,9 @@ else
 fi
 
 if [ "$CONTAINER_RUNTIME" = "apptainer" ]; then
-    IMAGE=~/apptainer/intellikit-dev.sif
+    # Mirrors APPTAINER_IMAGE_NAME in container_build.sh so exec picks up the
+    # image that build just produced for this matrix leg.
+    IMAGE=~/apptainer/${APPTAINER_IMAGE_NAME:-intellikit-dev}.sif
     if [ ! -f "$IMAGE" ]; then
         echo "[ERROR] Apptainer image not found at $IMAGE" >&2
         exit 1

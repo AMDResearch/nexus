@@ -83,12 +83,16 @@ jobs:
           - rocm: "7"
             image: intellikit-dev-rocm7
             dockerfile: docker/Dockerfile
+            def: apptainer/intellikit.def
           - rocm: "10"
             image: intellikit-dev-rocm10
             dockerfile: docker/Dockerfile.rocm10
+            def: apptainer/intellikit-rocm10.def
     env:
       DOCKER_IMAGE_NAME: ${{ matrix.image }}
       DOCKERFILE: ${{ github.workspace }}/${{ matrix.dockerfile }}
+      APPTAINER_IMAGE_NAME: ${{ matrix.image }}
+      APPTAINER_DEF: ${{ matrix.def }}
     steps:
       - name: Reset workspace ownership
         # Containers run as root, so a job that is cancelled, superseded or
@@ -104,6 +108,17 @@ jobs:
           fi
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Ensure a container runtime is present
+        # The runner may have neither. Apptainer is installable unprivileged-ish
+        # here and is the runtime this repo prefers; docker is left alone when it
+        # already exists so hosts that have it keep using it.
+        run: |
+          if ! command -v apptainer >/dev/null && ! command -v docker >/dev/null; then
+            echo "Neither Apptainer nor Docker found, installing Apptainer..."
+            add-apt-repository -y ppa:apptainer/ppa
+            apt-get update && apt-get install -y apptainer
+          fi
 
       - name: Build Intellikit container
         run: |
@@ -124,12 +139,16 @@ jobs:
           - rocm: "7"
             image: intellikit-dev-rocm7
             dockerfile: docker/Dockerfile
+            def: apptainer/intellikit.def
           - rocm: "10"
             image: intellikit-dev-rocm10
             dockerfile: docker/Dockerfile.rocm10
+            def: apptainer/intellikit-rocm10.def
     env:
       DOCKER_IMAGE_NAME: ${{ matrix.image }}
       DOCKERFILE: ${{ github.workspace }}/${{ matrix.dockerfile }}
+      APPTAINER_IMAGE_NAME: ${{ matrix.image }}
+      APPTAINER_DEF: ${{ matrix.def }}
 
     steps:
       - name: Reset workspace ownership
