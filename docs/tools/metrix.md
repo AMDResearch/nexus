@@ -88,7 +88,7 @@ Metrix provides 20 metrics organized by category. Availability varies by GPU arc
 
 | Metric | Description |
 |--------|-------------|
-| `compute.gpu_utilization` | GPU utilization (%). *RDNA only (gfx1030/gfx1100/gfx1151/gfx1201).* |
+| `compute.gpu_utilization` | GPU utilization (%). *RDNA only (gfx1030/gfx1100/gfx1150/gfx1151/gfx1201).* |
 | `compute.total_flops` | Total floating-point operations performed |
 | `compute.hbm_gflops` | Compute throughput (GFLOP/s) |
 | `compute.hbm_arithmetic_intensity` | Ratio of FLOPs to HBM bytes (FLOPs/Byte) |

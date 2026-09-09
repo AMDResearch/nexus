@@ -195,6 +195,7 @@ BACKENDS = [
     ("gfx950", "GFX950Backend"),
     ("gfx1030", "GFX1030Backend"),
     ("gfx1100", "GFX1100Backend"),
+    ("gfx1150", "GFX1150Backend"),
     ("gfx1151", "GFX1151Backend"),
     ("gfx1201", "GFX1201Backend"),
 ]
