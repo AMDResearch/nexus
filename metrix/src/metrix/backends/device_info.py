@@ -176,6 +176,12 @@ def query_device_specs(arch: str, device_id: int = 0) -> "DeviceSpecs":
     if arch.startswith(("gfx94", "gfx95")):
         mem_multiplier = 4.0  # HBM3/HBM3e: CK → 4x
     elif arch in ("gfx1150", "gfx1151"):
+        # Assumes LPDDR5X, validated on Strix Point/Halo APUs. Like every
+        # other branch here, this infers memory technology from arch rather
+        # than detecting it — HIP doesn't expose a memory-type field to check.
+        # A tool like dmidecode (memory device type/speed) could detect the
+        # installed memory directly, but that's a separate, more invasive
+        # dependency (requires root) and out of scope for this PR.
         mem_multiplier = 8.0  # LPDDR5X (Strix Point/Halo APUs): CK → 8x
     elif arch.startswith("gfx1"):
         mem_multiplier = 16.0  # GDDR6: base CK → 16x (16n prefetch)
