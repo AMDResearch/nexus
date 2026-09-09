@@ -70,9 +70,14 @@ def _profile(binary: Path, metrics: list, tmp_dir: Path, num_replays: int = 2) -
         cwd=str(tmp_dir),
         timeout_seconds=120,
     )
-    assert results.kernels, "No kernels profiled"
+    # Exclude HIP runtime helper kernels (e.g. the hipMemset-backed
+    # __amd_rocclr_fillBufferUnAligned) -- on small/fast workloads they can
+    # outlast the actual target kernel, which would break the
+    # longest-duration heuristic below.
+    candidates = [k for k in results.kernels if not k.name.startswith("__amd_rocclr_")]
+    assert candidates, f"No user kernels profiled (got {[k.name for k in results.kernels]})"
     # Pick the kernel with the longest duration (measured run, not warmup)
-    kernel = max(results.kernels, key=lambda k: k.duration_us.avg)
+    kernel = max(candidates, key=lambda k: k.duration_us.avg)
     return {m: kernel.metrics[m].avg for m in metrics if m in kernel.metrics}
 
 
@@ -283,11 +288,15 @@ class TestCacheHitRates:
     _L2_SRC = (
         _HIP_HEADER
         + r"""
-    __global__ void l2_kernel(const float* __restrict__ src,
+    __global__ void l2_kernel(const volatile float* __restrict__ src,
                               float* __restrict__ out,
                               size_t N, int iters) {
         float acc = 0.0f;
         for (int i = 0; i < iters; i++) {
+            // idx is loop-invariant, so without `volatile` the compiler
+            // hoists this load out of the loop entirely -- the hit/miss
+            // counters would then reflect a single access regardless of
+            // `iters`, not the repeated-access pattern this test measures.
             size_t idx = (blockIdx.x * blockDim.x + threadIdx.x) % N;
             acc += src[idx];
         }
@@ -319,12 +328,14 @@ class TestCacheHitRates:
     _L1_SRC = (
         _HIP_HEADER
         + r"""
-    __global__ void l1_kernel(const float* __restrict__ src,
+    __global__ void l1_kernel(const volatile float* __restrict__ src,
                               float* __restrict__ out,
                               int N_per_block, int iters) {
         float acc = 0.0f;
         int idx = threadIdx.x;
         for (int i = 0; i < iters; i++) {
+            // idx is loop-invariant, so without `volatile` the compiler
+            // hoists this load out of the loop entirely -- see l2_kernel above.
             if (idx < N_per_block) acc += src[idx];
         }
         if (threadIdx.x == 0) out[blockIdx.x] = acc;

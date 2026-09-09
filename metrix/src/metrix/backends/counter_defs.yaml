@@ -138,15 +138,17 @@ rocprofiler-sdk:
     # gfx1030 exposes only the TA_FLAT_* wavefront counters, not TA_BUFFER_*.
     # HIP kernels emit flat/global memory instructions rather than buffer
     # instructions, so TA_FLAT_* is the meaningful signal on RDNA2.
+    # gfx1151 (Strix Halo) exposes neither -- confirmed via
+    # `rocprofv3 --list-avail` on real hardware -- so it gets neither.
     - name: TA_BUFFER_LOAD_WAVEFRONTS_sum
       unit: Count
       definitions:
-        - architectures: [gfx1201, gfx1100, gfx1151]
+        - architectures: [gfx1201, gfx1100]
 
     - name: TA_BUFFER_STORE_WAVEFRONTS_sum
       unit: Count
       definitions:
-        - architectures: [gfx1201, gfx1100, gfx1151]
+        - architectures: [gfx1201, gfx1100]
 
     - name: TA_FLAT_LOAD_WAVEFRONTS_sum
       unit: Count
