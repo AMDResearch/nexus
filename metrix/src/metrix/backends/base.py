@@ -903,18 +903,16 @@ class CounterBackend(ABC):
         """
         Merge multiple dispatches by summing their counters
 
-        Used for within-run aggregation by kernel name, e.g. a kernel that is
-        launched more than once per run. Counters and duration are both
-        summed so rate metrics (e.g. GFLOPS = flops / time, or a bandwidth
-        utilization percentage) see the same totals on both sides of the
-        ratio -- averaging duration while summing counters would inflate
-        rates by roughly the dispatch count.
+        Used for within-run aggregation by kernel name (e.g. multi-pass profiling).
+        Counters are summed (each pass contributes one subset; others are 0).
+        Duration is stored as the average per dispatch so rate metrics (e.g. GFLOPS
+        = flops / time) use per-run time, not total time across passes.
 
         Args:
             dispatches: List of ProfileResult objects for same kernel
 
         Returns:
-            Single ProfileResult with merged counters and total duration_ns
+            Single ProfileResult with merged counters and average duration_ns
         """
         if not dispatches:
             raise ValueError("Cannot merge empty dispatch list")
@@ -941,11 +939,13 @@ class CounterBackend(ABC):
             if count > 0:
                 merged_counters[counter] /= count
 
+        avg_duration_ns = total_duration // len(dispatches)
+
         merged = ProfileResult(
             dispatch_id=first.dispatch_id,
             kernel_name=first.kernel_name,
             gpu_id=first.gpu_id,
-            duration_ns=total_duration,
+            duration_ns=avg_duration_ns,
             grid_size=first.grid_size,
             workgroup_size=first.workgroup_size,
             counters=dict(merged_counters),
