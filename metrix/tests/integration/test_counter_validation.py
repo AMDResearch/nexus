@@ -328,15 +328,20 @@ class TestCacheHitRates:
     _L1_SRC = (
         _HIP_HEADER
         + r"""
-    __global__ void l1_kernel(const volatile float* __restrict__ src,
+    __global__ void l1_kernel(const float* __restrict__ src,
                               float* __restrict__ out,
                               int N_per_block, int iters) {
         float acc = 0.0f;
         int idx = threadIdx.x;
         for (int i = 0; i < iters; i++) {
-            // idx is loop-invariant, so without `volatile` the compiler
-            // hoists this load out of the loop entirely -- see l2_kernel above.
+            // idx is loop-invariant, so the compiler would hoist this load out
+            // of the loop entirely. The empty asm with a "memory" clobber
+            // forces it to reload each iteration. Do NOT use `volatile` here:
+            // that compiles to `flat_load_dword ... sc0 sc1`, a system-scope
+            // load that bypasses the very L1 this kernel exists to exercise,
+            // dropping the measured hit rate to ~50%.
             if (idx < N_per_block) acc += src[idx];
+            __asm__ __volatile__("" ::: "memory");
         }
         if (threadIdx.x == 0) out[blockIdx.x] = acc;
     }
