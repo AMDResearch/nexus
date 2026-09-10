@@ -67,8 +67,10 @@ no metric available on that architecture — `compute` on any RDNA part, for
 instance.
 
 On gfx1103 (Phoenix / Radeon 780M) *no* counter-based metric is available:
-ROCm 7.2.4 ships no hardware-counter definitions for that architecture. The CLI
-falls back to reporting kernel durations only.
+ROCm 7.2.4 ships no hardware-counter definitions for that architecture. Only
+the bare `metrix profile <command>` form degrades there, reporting kernel
+durations alone; naming a preset or `--metrics` still fails, since nothing
+they ask for can be collected.
 
 ## Available Metrics
 

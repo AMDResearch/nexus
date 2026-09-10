@@ -23,7 +23,7 @@ import pytest
 from metrix import Metrix
 from metrix.metrics import METRIC_PROFILES
 
-from ..unit.conftest import HW_METRICS
+from ..unit.conftest import HW_ARCH, HW_METRICS
 from .test_inline_hip_profiling import _compile_hip
 
 # Every profile except `compute` (CDNA-only) has at least one metric on every
@@ -31,7 +31,13 @@ from .test_inline_hip_profiling import _compile_hip
 # here" branch for any of them is a regression rather than an expected outcome.
 # On a GPU with no counters at all -- gfx1103, and any other arch missing from
 # counter_defs.yaml -- no profile can resolve, so there is nothing to guarantee.
-UNIVERSAL_PROFILES = frozenset(METRIC_PROFILES) - {"compute"} if HW_METRICS else frozenset()
+# That exemption requires a GPU we actually detected: HW_METRICS is also empty
+# when rocminfo or hipcc is missing, and letting that void the invariant would
+# turn a real regression green on any machine where probing failed.
+_GPU_HAS_NO_COUNTERS = HW_ARCH is not None and not HW_METRICS
+UNIVERSAL_PROFILES = (
+    frozenset() if _GPU_HAS_NO_COUNTERS else frozenset(METRIC_PROFILES) - {"compute"}
+)
 
 # Larger than the shared vector_add fixture on purpose: the memory profiles
 # need enough traffic for the L2 and VRAM counters to register.

@@ -362,7 +362,8 @@ validated against an RX 6800 XT; gfx1151 is validated against Strix Halo
 (AMD Ryzen AI MAX+ 395); gfx1150 is validated against Strix Point
 (AMD Ryzen AI 9 HX 370 / Radeon 890M); gfx1103 is validated against Phoenix
 (AMD Ryzen 9 7940HS / Radeon 780M), where ROCm 7.2.4 exposes no counters at all
-— it is intentionally in no `architectures:` list, so it runs in time-only mode;
+— it is intentionally in no `architectures:` list, so a bare `metrix profile`
+run reports durations only and any preset or `--metrics` request fails;
 gfx1100 has not been checked on hardware.
 
 Example:

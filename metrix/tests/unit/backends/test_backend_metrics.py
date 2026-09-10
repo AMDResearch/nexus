@@ -1209,12 +1209,17 @@ class TestPhoenixHasNoCounterMetrics:
             backend = get_backend("gfx1103")
         assert backend.get_available_metrics() == []
 
-    def test_same_backend_class_still_serves_gfx1100(self):
-        """Same specs under arch 'gfx1100': gating is on arch, not the class."""
+    def test_gating_is_on_arch_not_backend_class(self):
+        """The very same GFX1103Backend yields metrics when its specs say gfx1100.
+
+        Proves the empty set above comes from the YAML architecture lists rather
+        than from anything in the class, and doubles as a positive control: if
+        counter_defs.yaml failed to load, this assertion would fail too.
+        """
         as_gfx1100 = replace(_TEST_SPECS["gfx1103"], arch="gfx1100")
         with patch(
-            "metrix.backends.gfx1100.query_device_specs",
+            "metrix.backends.gfx1103.query_device_specs",
             return_value=as_gfx1100,
         ):
-            metrics = get_backend("gfx1100").get_available_metrics()
+            metrics = get_backend("gfx1103").get_available_metrics()
         assert "compute.gpu_utilization" in metrics
