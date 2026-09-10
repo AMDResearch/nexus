@@ -6,7 +6,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 IntelliKit is a monorepo of LLM-ready GPU profiling and analysis tools for AMD ROCm. It provides clean Python abstractions over complex GPU internals with MCP (Model Context Protocol) server support for LLM integration.
 
-**Requirements:** The repo-level `install/tools/install.sh` script enforces Python >= 3.10, but individual packages have lower minimums: `accordo`, `linex`, and `nexus` require Python >= 3.8; `metrix` requires Python >= 3.9; `kerncap`, `rocm_mcp`, and `uprof_mcp` require Python >= 3.10. ROCm >= 6.0 is the general baseline; kerncap and linex target ROCm 7.0+ workflows. MI300+ GPUs are needed for the full profiling stack, while metrix additionally supports RDNA: gfx1030/1031/1032 (RDNA2), gfx1100-1103 (RDNA3), gfx1150/1151 (RDNA 3.5), and gfx1201 (RDNA4). Metric coverage varies by architecture — built-in profiles collect the subset the detected GPU supports.
+**Requirements:** The repo-level `install/tools/install.sh` script enforces Python >= 3.10, but individual packages have lower minimums: `accordo`, `linex`, and `nexus` require Python >= 3.8; `metrix` requires Python >= 3.9; `kerncap`, `rocm_mcp`, and `uprof_mcp` require Python >= 3.10. ROCm >= 6.0 is the general baseline; kerncap and linex target ROCm 7.0+ workflows. MI300+ GPUs are needed for the full profiling stack, while metrix additionally supports RDNA: gfx1030/1031/1032 (RDNA2), gfx1100-1103 (RDNA3), gfx1150/1151 (RDNA 3.5), and gfx1201 (RDNA4). Metric coverage varies by architecture — built-in profiles collect the subset the detected GPU supports. gfx1103 (Phoenix / Radeon 780M) is a special case: ROCm 7.2.4 ships no hardware-counter definitions for it, so metrix reports device specs and kernel durations there but no counter-based metrics.
 
 ## Tool Descriptions
 
@@ -360,7 +360,10 @@ A counter the hardware does not expose makes rocprofv3 exit 0 without writing
 any output; metrix detects this and names the missing counters. gfx1030 is
 validated against an RX 6800 XT; gfx1151 is validated against Strix Halo
 (AMD Ryzen AI MAX+ 395); gfx1150 is validated against Strix Point
-(AMD Ryzen AI 9 HX 370 / Radeon 890M); gfx1100 has not been checked on hardware.
+(AMD Ryzen AI 9 HX 370 / Radeon 890M); gfx1103 is validated against Phoenix
+(AMD Ryzen 9 7940HS / Radeon 780M), where ROCm 7.2.4 exposes no counters at all
+— it is intentionally in no `architectures:` list, so it runs in time-only mode;
+gfx1100 has not been checked on hardware.
 
 Example:
 

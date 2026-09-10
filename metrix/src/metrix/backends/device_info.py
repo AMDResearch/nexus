@@ -166,6 +166,8 @@ def query_device_specs(arch: str, device_id: int = 0) -> "DeviceSpecs":
     #   LPDDR5X (RDNA 3.5 APUs): MCLK = CK; 8:1 DQ:CK ratio → 8x multiplier
     #     e.g. gfx1151 / Strix Halo: 1 GHz × 8 = 8 GT/s × 256-bit / 8 ≈ 256 GB/s
     #          gfx1150 / Strix Point: 937 MHz × 8 = 7.5 GT/s × 128-bit / 8 ≈ 120 GB/s
+    #   DDR5 (RDNA3 Phoenix APU):  MCLK = half the data rate, DDR → 2x multiplier
+    #     e.g. gfx1103 / Phoenix: 2.8 GHz × 2 = 5.6 GT/s × 128-bit / 8 ≈ 89.6 GB/s
     mem_clock = gpu["memory_clock_rate_khz"]
     bus_width = gpu["memory_bus_width_bits"]
     if mem_clock <= 0 or bus_width <= 0:
@@ -183,6 +185,16 @@ def query_device_specs(arch: str, device_id: int = 0) -> "DeviceSpecs":
         # installed memory directly, but that's a separate, more invasive
         # dependency (requires root) and out of scope for this PR.
         mem_multiplier = 8.0  # LPDDR5X (Strix Point/Halo APUs): CK → 8x
+    elif arch == "gfx1103":
+        # Validated on a Radeon 780M (Ryzen 9 7940HS) reporting 2800 MHz over a
+        # 128-bit bus; dmidecode confirms 2 x DDR5-5600, so 89.6 GB/s. A copy
+        # kernel reaches 71.8-72.3 GB/s over 5 runs (80-81%) against that; the
+        # GDDR6 branch below would have claimed 716.8 GB/s and put the same
+        # kernel at 10%. Unlike the RDNA 3.5 APUs above, whose memory type is
+        # inferred, this one was checked against the installed modules -- but
+        # the branch still keys off arch, so a Phoenix part paired with LPDDR5
+        # would need its own case.
+        mem_multiplier = 2.0  # DDR5 (Phoenix APU): MCLK → 2x (DDR)
     elif arch.startswith("gfx1"):
         mem_multiplier = 16.0  # GDDR6: base CK → 16x (16n prefetch)
     else:

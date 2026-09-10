@@ -54,6 +54,19 @@ def requires_arch(arch: str):
     )
 
 
+def requires_counter_metrics():
+    """Decorator: skip a test unless this GPU exposes any counter-based metric.
+
+    gfx1103 (Phoenix / Radeon 780M) exposes none -- ROCm ships no hardware
+    counter definitions for it -- so metrix runs it in time-only mode and every
+    built-in profile is empty there.
+    """
+    return pytest.mark.skipif(
+        not HW_METRICS,
+        reason=f"{HW_ARCH} exposes no counter-based metrics (time-only mode)",
+    )
+
+
 def requires_cdna():
     """Decorator: skip a test unless the machine has a CDNA GPU (gfx9xx)."""
     return pytest.mark.skipif(

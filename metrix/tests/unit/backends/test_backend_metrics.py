@@ -1,14 +1,15 @@
 """
 Unit tests for backend metric computations (gfx942, gfx950, gfx90a, gfx1201,
-gfx1030, gfx1150, and gfx1151)
+gfx1030, gfx1103, gfx1150, and gfx1151)
 
 Tests use MOCK counter data (no hardware counters in test code!)
 Tests are parametrized to run on MI300X (gfx942), MI350X (gfx950), MI200 (gfx90a),
-RDNA4 (gfx1201), RDNA2 (gfx1030), and RDNA 3.5 (gfx1150, gfx1151).
+RDNA4 (gfx1201), RDNA2 (gfx1030), RDNA3 (gfx1103) and RDNA 3.5 (gfx1150, gfx1151).
 All metrics are loaded from counter_defs.yaml.
 """
 
 import pytest
+from dataclasses import replace
 from unittest.mock import patch
 from metrix.backends import get_backend
 from metrix.backends.base import DeviceSpecs, Statistics
@@ -68,6 +69,17 @@ _TEST_SPECS = {
         hbm_bandwidth_gbs=512.0,
         l2_size_mb=4.0,
         lds_size_per_cu_kb=128.0,
+    ),
+    "gfx1103": DeviceSpecs(
+        arch="gfx1103",
+        name="AMD Radeon 780M",
+        num_cu=6,
+        max_waves_per_cu=64,
+        wavefront_size=32,
+        base_clock_mhz=2799.0,
+        hbm_bandwidth_gbs=89.6,
+        l2_size_mb=2.0,
+        lds_size_per_cu_kb=64.0,
     ),
     "gfx1150": DeviceSpecs(
         arch="gfx1150",
@@ -1179,3 +1191,40 @@ class TestRDNA35LdsMetricAvailability:
             metrics = get_backend("gfx1151").get_available_metrics()
         for name in self._LDS_ONLY_ON_HALO:
             assert name in metrics
+
+
+# ═══════════════════════════════════════════════════════════════════
+# RDNA3 APU (gfx1103) tests
+#
+# gfx1103 (Phoenix / Radeon 780M) has no hardware counters: ROCm 7.2.4 ships
+# counter definitions for gfx1100/1101/1102 and gfx1150/1151 but none for
+# gfx1103, so it is deliberately in no `architectures:` list in
+# counter_defs.yaml and metrix runs it in time-only mode.
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestPhoenixHasNoCounterMetrics:
+    """gfx1103 must expose no metrics, while the backend it shares does."""
+
+    def test_gfx1103_exposes_no_metrics(self):
+        with patch(
+            "metrix.backends.gfx1103.query_device_specs",
+            return_value=_TEST_SPECS["gfx1103"],
+        ):
+            backend = get_backend("gfx1103")
+        assert backend.get_available_metrics() == []
+
+    def test_same_backend_class_still_serves_gfx1100(self):
+        """Gating is on DeviceSpecs.arch alone, not on the backend class.
+
+        GFX1103Backend derives from GFX1100Backend, so feeding the identical
+        specs under arch 'gfx1100' must yield the full RDNA3 metric set --
+        proving gfx1103's empty set comes from the YAML arch lists.
+        """
+        as_gfx1100 = replace(_TEST_SPECS["gfx1103"], arch="gfx1100")
+        with patch(
+            "metrix.backends.gfx1100.query_device_specs",
+            return_value=as_gfx1100,
+        ):
+            metrics = get_backend("gfx1100").get_available_metrics()
+        assert metrics

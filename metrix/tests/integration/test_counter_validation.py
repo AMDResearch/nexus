@@ -360,6 +360,7 @@ class TestCacheHitRates:
     """
     )
 
+    @requires_metric("memory.l2_hit_rate")
     def test_l2_hit_rate_with_resident_data(self):
         """256 KB array iterated 500x with few blocks should show elevated L2 hit rate.
 
@@ -422,6 +423,7 @@ def _lds_source(stride: int) -> str:
 class TestLDSBankConflicts:
     """Validate LDS bank conflict metric."""
 
+    @requires_metric("memory.lds_bank_conflicts")
     def test_no_conflicts_with_sequential_access(self):
         """Sequential LDS access should show ~0 bank conflicts."""
         with tempfile.TemporaryDirectory(prefix="metrix_val_") as d:

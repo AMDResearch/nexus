@@ -66,6 +66,10 @@ supports and warns about the rest. It raises `ValueError` if the preset names
 no metric available on that architecture — `compute` on any RDNA part, for
 instance.
 
+On gfx1103 (Phoenix / Radeon 780M) *no* counter-based metric is available:
+ROCm 7.2.4 ships no hardware-counter definitions for that architecture. The CLI
+falls back to reporting kernel durations only.
+
 ## Available Metrics
 
 ### Compute
