@@ -431,7 +431,8 @@ def test_merge_dispatches_keeps_rate_metrics_consistent(durations, flop_counts):
     dispatch count.
     """
     dispatches = [
-        _dispatch(i, d, {"SQ_INSTS_VALU_ADD_F32": f}) for i, (d, f) in enumerate(zip(durations, flop_counts))
+        _dispatch(i, d, {"SQ_INSTS_VALU_ADD_F32": f})
+        for i, (d, f) in enumerate(zip(durations, flop_counts))
     ]
 
     merged = _DummyBackend()._merge_dispatches(dispatches)
@@ -446,7 +447,11 @@ def test_merge_dispatches_sums_duration_not_average():
     result must be the total across dispatches, matching how counters are
     summed, not the average duration of a single dispatch.
     """
-    dispatches = [_dispatch(0, 1000, {"C": 1}), _dispatch(1, 2000, {"C": 1}), _dispatch(2, 3000, {"C": 1})]
+    dispatches = [
+        _dispatch(0, 1000, {"C": 1}),
+        _dispatch(1, 2000, {"C": 1}),
+        _dispatch(2, 3000, {"C": 1}),
+    ]
 
     merged = _DummyBackend()._merge_dispatches(dispatches)
 
@@ -485,7 +490,10 @@ def test_merge_dispatches_averages_utilization_style_counters(counter_name):
     averaged across dispatches rather than summed -- unlike raw event counts,
     summing two 50% utilization samples should stay ~50%, not become 100%.
     """
-    dispatches = [_dispatch(0, 1000, {counter_name: 40.0}), _dispatch(1, 3000, {counter_name: 60.0})]
+    dispatches = [
+        _dispatch(0, 1000, {counter_name: 40.0}),
+        _dispatch(1, 3000, {counter_name: 60.0}),
+    ]
 
     merged = _DummyBackend()._merge_dispatches(dispatches)
 

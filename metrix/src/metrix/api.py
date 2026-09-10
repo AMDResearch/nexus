@@ -22,6 +22,12 @@ from .logger import logger
 class KernelResults:
     """
     Clean result object for a single kernel
+
+    ``duration_us`` is the *total* time the kernel occupied the GPU in one
+    run (all ``dispatch_count`` launches summed), with min/max/avg taken
+    across runs. It is the denominator the rate metrics are computed
+    against, so it stays consistent with them. For the per-dispatch
+    latency, use :attr:`avg_time_us`.
     """
 
     name: str

@@ -861,6 +861,12 @@ class CounterBackend(ABC):
         """
         Compute min/max/avg statistics for each counter across dispatches
 
+        When the inputs come from :meth:`_merge_dispatches`, each entry is a
+        whole run, so the ``duration_us`` statistics describe the total GPU
+        time of all launches of the kernel in a run, not a single dispatch.
+        ``_num_dispatches`` carries the launch count needed to recover the
+        per-dispatch latency (see ``KernelResults.avg_time_us``).
+
         Args:
             dispatches: List of ProfileResult objects
 
