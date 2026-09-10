@@ -26,13 +26,12 @@ from metrix.metrics import METRIC_PROFILES
 from ..unit.conftest import HW_METRICS
 from .test_inline_hip_profiling import _compile_hip
 
-# Every profile except `compute` has at least one metric on every architecture
-# that exposes hardware counters at all, so taking the "nothing available here"
-# branch for any of them is a regression rather than an expected outcome.
-# `compute` is CDNA-only. The guarantee is void on a GPU with no counters
-# whatsoever (gfx1103 / Phoenix), where no profile can resolve -- see
-# HW_METRICS below.
-UNIVERSAL_PROFILES = frozenset(METRIC_PROFILES) - {"compute"}
+# Every profile except `compute` (CDNA-only) has at least one metric on every
+# architecture that exposes hardware counters, so taking the "nothing available
+# here" branch for any of them is a regression rather than an expected outcome.
+# On a GPU with no counters at all -- gfx1103, and any other arch missing from
+# counter_defs.yaml -- no profile can resolve, so there is nothing to guarantee.
+UNIVERSAL_PROFILES = frozenset(METRIC_PROFILES) - {"compute"} if HW_METRICS else frozenset()
 
 # Larger than the shared vector_add fixture on purpose: the memory profiles
 # need enough traffic for the L2 and VRAM counters to register.
@@ -87,10 +86,8 @@ def test_builtin_profile_runs_or_reports_unavailable(profile_name, saxpy_binary)
         )
     except ValueError as exc:
         # Acceptable only for a profile with no metric on this architecture,
-        # and only with a message the user can act on. On a GPU that exposes no
-        # counters at all, that is every profile, so the universal guarantee
-        # cannot apply -- but the message must still be actionable.
-        assert profile_name not in UNIVERSAL_PROFILES or not HW_METRICS, (
+        # and only with a message the user can act on.
+        assert profile_name not in UNIVERSAL_PROFILES, (
             f"profile '{profile_name}' should be supported on every architecture "
             f"but reported nothing available on {arch}: {exc}"
         )

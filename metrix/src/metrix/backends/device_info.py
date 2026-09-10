@@ -190,10 +190,7 @@ def query_device_specs(arch: str, device_id: int = 0) -> "DeviceSpecs":
         # 128-bit bus; dmidecode confirms 2 x DDR5-5600, so 89.6 GB/s. A copy
         # kernel reaches 71.8-72.3 GB/s over 5 runs (80-81%) against that; the
         # GDDR6 branch below would have claimed 716.8 GB/s and put the same
-        # kernel at 10%. Unlike the RDNA 3.5 APUs above, whose memory type is
-        # inferred, this one was checked against the installed modules -- but
-        # the branch still keys off arch, so a Phoenix part paired with LPDDR5
-        # would need its own case.
+        # kernel at 10%.
         mem_multiplier = 2.0  # DDR5 (Phoenix APU): MCLK → 2x (DDR)
     elif arch.startswith("gfx1"):
         mem_multiplier = 16.0  # GDDR6: base CK → 16x (16n prefetch)

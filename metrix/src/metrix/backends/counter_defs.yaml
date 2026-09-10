@@ -27,14 +27,21 @@
 #     TCC_EA_RDREQ_32B_sum — 32-byte read requests
 #     Remaining reads are 64B: (RDREQ - RDREQ_32B)
 #
-# gfx1103 (Phoenix / Radeon 780M) is deliberately absent from every
-# `architectures:` list below, and must stay that way. ROCm 7.2.4's own
+# Backends gate on DeviceSpecs.arch, so any arch missing from the
+# `architectures:` lists below yields zero metrics and metrix falls back to
+# time-only mode. get_backend() accepts five such archs today: gfx1031,
+# gfx1032, gfx1101, gfx1102 and gfx1103.
+#
+# For the first four that is an unfilled gap -- ROCm does define counters for
+# them, they have simply never been validated on hardware and added here.
+#
+# gfx1103 (Phoenix / Radeon 780M) is different: it is deliberately absent and
+# must stay that way. ROCm 7.2.4's own
 # /opt/rocm/share/rocprofiler-sdk/counter_defs.yaml has entries for gfx1100,
 # gfx1101, gfx1102, gfx1150 and gfx1151 but none for gfx1103, so
 # `rocprofv3 --list-avail` reports no counters on it and requesting even one
-# hangs the profiled process instead of failing. Backends gate on
-# DeviceSpecs.arch, so an unlisted arch yields zero metrics -- which is the
-# correct outcome here: metrix falls back to time-only mode.
+# hangs the profiled process instead of failing. Listing gfx1103 here would
+# not help; there is nothing on the ROCm side to collect.
 rocprofiler-sdk:
   counters:
 

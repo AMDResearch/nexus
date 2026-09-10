@@ -1195,16 +1195,11 @@ class TestRDNA35LdsMetricAvailability:
 
 # ═══════════════════════════════════════════════════════════════════
 # RDNA3 APU (gfx1103) tests
-#
-# gfx1103 (Phoenix / Radeon 780M) has no hardware counters: ROCm 7.2.4 ships
-# counter definitions for gfx1100/1101/1102 and gfx1150/1151 but none for
-# gfx1103, so it is deliberately in no `architectures:` list in
-# counter_defs.yaml and metrix runs it in time-only mode.
 # ═══════════════════════════════════════════════════════════════════
 
 
 class TestPhoenixHasNoCounterMetrics:
-    """gfx1103 must expose no metrics, while the backend it shares does."""
+    """gfx1103 has no hardware counters, so it is in no `architectures:` list."""
 
     def test_gfx1103_exposes_no_metrics(self):
         with patch(
@@ -1215,16 +1210,11 @@ class TestPhoenixHasNoCounterMetrics:
         assert backend.get_available_metrics() == []
 
     def test_same_backend_class_still_serves_gfx1100(self):
-        """Gating is on DeviceSpecs.arch alone, not on the backend class.
-
-        GFX1103Backend derives from GFX1100Backend, so feeding the identical
-        specs under arch 'gfx1100' must yield the full RDNA3 metric set --
-        proving gfx1103's empty set comes from the YAML arch lists.
-        """
+        """Same specs under arch 'gfx1100': gating is on arch, not the class."""
         as_gfx1100 = replace(_TEST_SPECS["gfx1103"], arch="gfx1100")
         with patch(
             "metrix.backends.gfx1100.query_device_specs",
             return_value=as_gfx1100,
         ):
             metrics = get_backend("gfx1100").get_available_metrics()
-        assert metrics
+        assert "compute.gpu_utilization" in metrics
