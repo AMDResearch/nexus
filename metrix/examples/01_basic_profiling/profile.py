@@ -124,8 +124,8 @@ def main():
             print("=" * 80)
 
             for kernel in results.kernels:
-                print(f"\nKernel: {kernel.name}")
-                print(f"  Duration: {kernel.avg_time_us:.2f} μs/dispatch ({kernel.dispatch_count} dispatches)")
+                print(f"\nKernel: {kernel.name} ({kernel.dispatch_count} dispatches)")
+                print(f"  Duration: {kernel.avg_time_us:.2f} μs/dispatch")
 
                 # Display metrics
                 for metric_name, stats in kernel.metrics.items():
