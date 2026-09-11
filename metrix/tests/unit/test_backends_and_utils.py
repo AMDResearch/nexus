@@ -195,6 +195,8 @@ BACKENDS = [
     ("gfx950", "GFX950Backend"),
     ("gfx1030", "GFX1030Backend"),
     ("gfx1100", "GFX1100Backend"),
+    ("gfx1103", "GFX1103Backend"),
+    ("gfx1150", "GFX1150Backend"),
     ("gfx1151", "GFX1151Backend"),
     ("gfx1201", "GFX1201Backend"),
 ]
@@ -384,3 +386,38 @@ def test_run_gpu_query_reports_missing_binary(tmp_path):
     ):
         with pytest.raises(RuntimeError, match="gpu_query failed"):
             device_info._run_gpu_query()
+
+
+def _gpu_payload(arch, memory_clock_rate_khz, memory_bus_width_bits):
+    """A gpu_query record, varying only the fields the bandwidth math reads."""
+    return {
+        "name": "AMD Radeon Graphics",
+        "gcn_arch_name": arch,
+        "num_cu": 6,
+        "wavefront_size": 32,
+        "max_threads_per_multiprocessor": 2048,
+        "clock_rate_khz": 2799000,
+        "memory_clock_rate_khz": memory_clock_rate_khz,
+        "memory_bus_width_bits": memory_bus_width_bits,
+        "l2_cache_size_bytes": 2 * 1024 * 1024,
+        "max_shared_memory_per_multiprocessor": 64 * 1024,
+    }
+
+
+@pytest.mark.parametrize(
+    "arch, mem_clock_khz, bus_bits, expected_gbs",
+    [
+        # gfx1103 (Phoenix / Radeon 780M) reads DDR5 system memory, not GDDR6:
+        # DDR5-5600 dual channel = 2800 MHz x 2 x 128-bit / 8. Values measured
+        # on a Ryzen 9 7940HS. The GDDR6 fallback would claim 716.8 GB/s.
+        ("gfx1103", 2800000, 128, 89.6),
+        # Discrete RDNA must still take the 16x GDDR6 path.
+        ("gfx1100", 2500000, 384, 1920.0),
+    ],
+)
+def test_query_device_specs_memory_bandwidth(arch, mem_clock_khz, bus_bits, expected_gbs):
+    payload = [_gpu_payload(arch, mem_clock_khz, bus_bits)]
+    with patch.object(device_info, "_run_gpu_query", return_value=payload):
+        specs = device_info.query_device_specs(arch)
+    assert specs.arch == arch
+    assert specs.hbm_bandwidth_gbs == pytest.approx(expected_gbs)
